@@ -11,7 +11,7 @@ OpsPilot currently uses:
 - Turborepo
 - TypeScript
 - apps/web
-- apps/docs
+- apps/api
 - packages/
 
 Inspect the repository before assuming additional applications, frameworks, or packages.
