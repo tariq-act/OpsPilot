@@ -2,7 +2,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-From the repository root:
+The repository root README is the local development guide (prerequisites, env files, troubleshooting). From the root:
 
 ```bash
 bun install
@@ -10,11 +10,11 @@ cp apps/web/.env.example apps/web/.env.local
 bun run dev --filter=web
 ```
 
-Or from this directory: `bun dev`.
+`bun run dev` from the root starts web and API together. Or from this directory after a root install: `bun run dev`.
 
 Open [http://localhost:3001](http://localhost:3001) (the app is configured on port 3001 so it does not collide with the API on 3000).
 
-No environment variables are required. Copy `.env.example` to `.env.local` for local overrides. Variables prefixed with `NEXT_PUBLIC_` are exposed to the browser; never put secrets in them. See the repository root README for the full environment convention.
+No environment variables are required. Copy `.env.example` to `.env.local` for local overrides. Variables prefixed with `NEXT_PUBLIC_` are exposed to the browser; never put secrets in them. PostgreSQL is an API concern and is not required to run the web app today.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
