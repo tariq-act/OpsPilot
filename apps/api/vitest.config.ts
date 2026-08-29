@@ -1,13 +1,21 @@
 import { defineConfig } from "vitest/config";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
-  // Resolves the path aliases declared in tsconfig.json, including the ones
-  // added by `nest g library`.
-  plugins: [tsconfigPaths()],
   test: {
+    name: "unit",
     globals: true,
     root: "./",
-    include: ["**/*.spec.ts"],
+    environment: "node",
+    include: ["src/**/*.spec.ts"],
+    exclude: ["**/*.e2e-spec.ts", "test/**", "dist/**", "node_modules/**"],
+    restoreMocks: true,
+    clearMocks: true,
+    unstubEnvs: true,
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      include: ["src/**/*.ts"],
+      exclude: ["src/**/*.spec.ts", "src/main.ts"],
+    },
   },
 });

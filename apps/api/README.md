@@ -50,12 +50,25 @@ $ bun run start:prod
 # unit tests
 $ bun run test
 
-# e2e tests
-$ bun run test:e2e
+# unit tests (watch)
+$ bun run test:watch
 
 # test coverage
 $ bun run test:cov
+
+# e2e tests
+$ bun run test:e2e
 ```
+
+No extra environment variables or secrets are required.
+
+### Test conventions
+
+- Unit tests live next to the code under test: `src/**/*.spec.ts`
+- Integration tests, when added, live in `test/integration/**/*.spec.ts`
+- E2E tests live in `test/**/*.e2e-spec.ts`
+
+From the repository root, `bun run test` and `bun run test:e2e` run the same API scripts through Turborepo.
 
 ## Deployment
 
