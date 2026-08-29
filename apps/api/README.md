@@ -63,7 +63,7 @@ $ bun run test:cov
 $ bun run test:e2e
 ```
 
-No extra environment variables or secrets are required.
+No extra environment variables or secrets are required. GitHub Actions CI runs `bun run test` and `bun run test:e2e` from `apps/api`. See the root README for when CI runs and how to reproduce it.
 
 ### Test conventions
 

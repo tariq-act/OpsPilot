@@ -117,6 +117,38 @@ bun run test:e2e    # E2E tests
 | Integration | `test/integration/` when introduced | `*.spec.ts`     |
 | E2E         | `test/`                             | `*.e2e-spec.ts` |
 
+### Continuous integration
+
+GitHub Actions runs the workspace validation commands on every pull request and on every push to `main`. The workflow is [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+CI uses Node.js 24 (`engines.node`) and Bun 1.3.13 (`devEngines.packageManager`). Dependencies are installed with `bun install --frozen-lockfile`. Turborepo remote caching is not enabled.
+
+**What CI validates**
+
+| Check            | Command                           |
+| ---------------- | --------------------------------- |
+| Lint             | `bun run lint`                    |
+| Type checking    | `bun run check-types`             |
+| Unit tests       | `cd apps/api && bun run test`     |
+| E2E tests        | `cd apps/api && bun run test:e2e` |
+| Production build | `bun run build`                   |
+
+Lint, type checking, and production build use the root Turborepo scripts. Unit and E2E tests run from `apps/api` (`bun run test` and `bun run test:e2e`). API E2E tests boot Nest in-process and do not need Docker, databases, or other external services.
+
+**Environment and secrets**
+
+CI does not copy `.env` files, does not use production secrets, and does not deploy. Example files under `.env.example` are documentation only. No extra variables are required for the current checks.
+
+**Reproduce CI locally**
+
+```sh
+bun install --frozen-lockfile
+bun run lint
+bun run check-types
+bun run build
+cd apps/api && bun run test && bun run test:e2e
+```
+
 ### Build
 
 To build all apps and packages, run the following command:
