@@ -27,23 +27,33 @@
 
 ## Project setup
 
+From the repository root (see the root README for the full local development guide):
+
 ```bash
 $ bun install
-$ cp .env.example .env
+$ cp apps/api/.env.example apps/api/.env
+$ bun run dev --filter=api
 ```
 
-Environment files for this app live in `apps/api`. See the repository root README for the full convention. `PORT` is optional and defaults to `3000`. Do not commit `.env`.
+Or from this directory after a root `bun install`: `bun run dev` (watch mode) or `cp .env.example .env`.
+
+Environment files for this app live in `apps/api`. `PORT` is optional and defaults to `3000`. Do not commit `.env`.
+
+PostgreSQL will be required for database-backed development. It is not provisioned in this repository yet. Current startup and tests do not need it.
 
 ## Compile and run the project
 
 ```bash
-# development
-$ bun run start
+# development (watch) — used by the root `bun run dev` task
+$ bun run dev
 
-# watch mode
+# equivalent watch mode
 $ bun run start:dev
 
-# production mode
+# one-shot development start
+$ bun run start
+
+# production mode (requires `bun run build` first)
 $ bun run start:prod
 ```
 
@@ -63,15 +73,13 @@ $ bun run test:cov
 $ bun run test:e2e
 ```
 
-No extra environment variables or secrets are required. GitHub Actions CI runs `bun run test` and `bun run test:e2e` from `apps/api`. See the root README for when CI runs and how to reproduce it.
+No extra environment variables, secrets, or PostgreSQL are required. GitHub Actions CI runs `bun run test` and `bun run test:e2e` from `apps/api`. See the root README for local setup, troubleshooting, when CI runs, and how to reproduce it.
 
 ### Test conventions
 
 - Unit tests live next to the code under test: `src/**/*.spec.ts`
 - Integration tests, when added, live in `test/integration/**/*.spec.ts`
 - E2E tests live in `test/**/*.e2e-spec.ts`
-
-From the repository root, `bun run test` and `bun run test:e2e` run the same API scripts through Turborepo.
 
 ## Deployment
 
