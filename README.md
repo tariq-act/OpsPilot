@@ -24,6 +24,60 @@ This Turborepo includes the following packages/apps:
 
 Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
 
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) 24 or later
+- [Bun](https://bun.sh/) 1.3.13 (see `package.json` `devEngines`)
+
+### Getting started
+
+```sh
+bun install
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
+bun run dev
+```
+
+- API: [http://localhost:3000](http://localhost:3000)
+- Web: [http://localhost:3001](http://localhost:3001)
+
+No variables are required today. The API listens on port 3000 when `PORT` is unset. Tests do not need secrets.
+
+### Environment
+
+Application env files are loaded from each app directory, not the repo root.
+
+| File                    | Purpose                                           | Git       |
+| ----------------------- | ------------------------------------------------- | --------- |
+| `.env.example`          | Workspace convention (this file is comments only) | committed |
+| `apps/api/.env.example` | NestJS server variables                           | committed |
+| `apps/web/.env.example` | Next.js variables                                 | committed |
+| `apps/api/.env`         | Local API secrets / overrides                     | ignored   |
+| `apps/web/.env.local`   | Local web overrides (preferred for Next.js)       | ignored   |
+
+**Naming**
+
+- Use `SCREAMING_SNAKE_CASE`.
+- Put a variable in the app that reads it.
+- **Web, browser-safe:** `NEXT_PUBLIC_*` is inlined into the client bundle. Never put secrets here.
+- **Web, server-only:** no `NEXT_PUBLIC_` prefix (Server Components, Route Handlers, `next.config`).
+- **API:** always server-only. Do not use `NEXT_PUBLIC_*`.
+
+**Currently documented variables**
+
+| Variable              | App        | Required | Purpose                                           | Example                 |
+| --------------------- | ---------- | -------- | ------------------------------------------------- | ----------------------- |
+| `PORT`                | `apps/api` | Optional | HTTP listen port. Default `3000`.                 | `3000`                  |
+| `NODE_ENV`            | all        | Optional | Runtime/build environment.                        | `development`           |
+| `NEXT_PUBLIC_API_URL` | `apps/web` | Optional | Browser-safe API origin. Not read by the app yet. | `http://localhost:3000` |
+
+**Secrets**
+
+- Never commit `.env`, `.env.local`, `.env.*.local`, credentials, API keys, or tokens.
+- Never expose secrets through `NEXT_PUBLIC_*`.
+- Keep API secrets in `apps/api` only.
+- If a secret is committed by mistake, rotate it.
+
 ### Utilities
 
 This Turborepo has some additional tools already setup for you:

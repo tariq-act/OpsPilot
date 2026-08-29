@@ -29,7 +29,10 @@
 
 ```bash
 $ bun install
+$ cp .env.example .env
 ```
+
+Environment files for this app live in `apps/api`. See the repository root README for the full convention. `PORT` is optional and defaults to `3000`. Do not commit `.env`.
 
 ## Compile and run the project
 

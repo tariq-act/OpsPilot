@@ -2,19 +2,19 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+From the repository root:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
+cp apps/web/.env.example apps/web/.env.local
+bun run dev --filter=web
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Or from this directory: `bun dev`.
+
+Open [http://localhost:3001](http://localhost:3001) (the app is configured on port 3001 so it does not collide with the API on 3000).
+
+No environment variables are required. Copy `.env.example` to `.env.local` for local overrides. Variables prefixed with `NEXT_PUBLIC_` are exposed to the browser; never put secrets in them. See the repository root README for the full environment convention.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
