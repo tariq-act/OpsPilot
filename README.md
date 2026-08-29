@@ -31,6 +31,37 @@ This Turborepo has some additional tools already setup for you:
 - [TypeScript](https://www.typescriptlang.org/) for static type checking
 - [ESLint](https://eslint.org/) for code linting
 - [Prettier](https://prettier.io) for code formatting
+- [Vitest](https://vitest.dev/) for API unit and E2E tests
+
+### Testing
+
+The API uses Vitest. The web app does not have a test suite yet; do not add placeholder web tests.
+
+No extra environment variables or secrets are required for the current tests.
+
+**Repository**
+
+```sh
+bun run test      # unit tests in workspaces that define them (currently api)
+bun run test:e2e  # E2E tests in workspaces that define them (currently api)
+```
+
+**API (`apps/api`)**
+
+```sh
+bun run test        # unit tests
+bun run test:watch  # unit tests in watch mode
+bun run test:cov    # unit tests with coverage
+bun run test:e2e    # E2E tests
+```
+
+**Conventions (API)**
+
+| Kind        | Location                            | Naming          |
+| ----------- | ----------------------------------- | --------------- |
+| Unit        | Colocated in `src/`                 | `*.spec.ts`     |
+| Integration | `test/integration/` when introduced | `*.spec.ts`     |
+| E2E         | `test/`                             | `*.e2e-spec.ts` |
 
 ### Build
 
