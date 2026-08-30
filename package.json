@@ -9,7 +9,10 @@
     "format:check": "prettier --check .",
     "check-types": "turbo run check-types",
     "test": "turbo run test",
-    "test:e2e": "turbo run test:e2e"
+    "test:e2e": "turbo run test:e2e",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:status": "docker compose ps"
   },
   "devDependencies": {
     "prettier": "3.9.6",

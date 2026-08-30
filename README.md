@@ -20,26 +20,24 @@ Each package and app is TypeScript.
 
 Install these before the first `bun install`:
 
-| Tool                           | Version     | Defined in                                 |
-| ------------------------------ | ----------- | ------------------------------------------ |
-| [Node.js](https://nodejs.org/) | 24 or later | `package.json` `engines.node`              |
-| [Bun](https://bun.sh/)         | 1.3.13      | `package.json` `devEngines.packageManager` |
+| Tool                                          | Version                       | Defined in                                 |
+| --------------------------------------------- | ----------------------------- | ------------------------------------------ |
+| [Node.js](https://nodejs.org/)                | 24 or later                   | `package.json` `engines.node`              |
+| [Bun](https://bun.sh/)                        | 1.3.13                        | `package.json` `devEngines.packageManager` |
+| [Docker](https://docs.docker.com/get-docker/) | Compose v2 (`docker compose`) | Local PostgreSQL (`compose.yaml`)          |
 
 Confirm:
 
 ```sh
-node --version   # v24.x or later
-bun --version    # 1.3.13
+node --version     # v24.x or later
+bun --version      # 1.3.13
+docker compose version
 ```
 
-**PostgreSQL** is the application database. It is required for
-database-backed development. Local PostgreSQL provisioning is not in this
-repository yet (that is the next infrastructure step). Current lint, type
-checks, tests, production builds, and `bun run dev` do not connect to a
-database.
-
-This repository does not use Docker yet. Do not add Compose or containers
-for this setup.
+**PostgreSQL** is the application database. Only the NestJS API connects to
+it. Next.js must not connect to PostgreSQL or Supabase. Local development
+uses PostgreSQL 16 via Docker Compose. Hosted/staging uses Supabase
+PostgreSQL through the same `DATABASE_URL` connection string.
 
 ## Getting started
 
@@ -47,6 +45,7 @@ From the repository root:
 
 ```sh
 bun install
+docker compose up -d
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env.local
 bun run dev
@@ -57,10 +56,14 @@ bun run dev
 
 `bun run dev` runs each workspace `dev` script through Turborepo. That starts
 the API (`nest start --watch` on port 3000) and the web app
-(`next dev --port 3001`).
+(`next dev --port 3001`). The API loads `apps/api/.env` at process start
+(`process.loadEnvFile`). Existing process environment variables are not
+overridden.
 
-No environment variables are required today. The API listens on port 3000
-when `PORT` is unset. Tests do not need secrets.
+No extra secrets are required for local Docker PostgreSQL. The API listens
+on port 3000 when `PORT` is unset. Copy `apps/api/.env.example` so
+`DATABASE_URL` points at the Compose database. Unit and E2E tests do not
+require PostgreSQL to pass.
 
 Run a single app:
 
@@ -93,11 +96,12 @@ Application env files are loaded from each app directory, not the repo root.
 
 **Currently documented variables**
 
-| Variable              | App        | Required | Purpose                                           | Example                 |
-| --------------------- | ---------- | -------- | ------------------------------------------------- | ----------------------- |
-| `PORT`                | `apps/api` | Optional | HTTP listen port. Default `3000`.                 | `3000`                  |
-| `NODE_ENV`            | all        | Optional | Runtime/build environment.                        | `development`           |
-| `NEXT_PUBLIC_API_URL` | `apps/web` | Optional | Browser-safe API origin. Not read by the app yet. | `http://localhost:3000` |
+| Variable              | App        | Required                     | Purpose                                                                            | Example                                                  |
+| --------------------- | ---------- | ---------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `PORT`                | `apps/api` | Optional                     | HTTP listen port. Default `3000`.                                                  | `3000`                                                   |
+| `NODE_ENV`            | all        | Optional                     | Runtime/build environment.                                                         | `development`                                            |
+| `NEXT_PUBLIC_API_URL` | `apps/web` | Optional                     | Browser-safe API origin. Not read yet.                                             | `http://localhost:3000`                                  |
+| `DATABASE_URL`        | `apps/api` | Required for `/health/ready` | PostgreSQL URI. Local default below; Supabase URI for hosted. Never in `apps/web`. | `postgresql://opspilot:opspilot@127.0.0.1:5432/opspilot` |
 
 **Secrets**
 
@@ -109,14 +113,59 @@ Application env files are loaded from each app directory, not the repo root.
 
 ### PostgreSQL
 
-PostgreSQL will be the API's database. When that work lands, expect a
-connection setting (such as `DATABASE_URL`) in `apps/api/.env`, documented
-in `apps/api/.env.example`. Until then:
+Only `apps/api` connects to PostgreSQL, using `node-postgres` (`pg`) and a
+standard connection URI. There is no ORM and no Supabase JavaScript client.
 
-- Do not add a database URL just to start the apps.
-- Current unit and E2E tests do not need PostgreSQL.
-- If a later change fails with a connection error, PostgreSQL is not
-  running or not configured. See [Troubleshooting](#troubleshooting).
+**Local (Docker Compose)**
+
+From the repository root:
+
+```sh
+docker compose up -d          # start PostgreSQL 16 (or bun run db:up)
+docker compose ps             # status (or bun run db:status)
+docker compose down           # stop; keeps the named volume
+docker compose down -v        # stop and delete local data
+```
+
+Local defaults (not production secrets):
+
+| Compose variable    | Default    | Purpose                        |
+| ------------------- | ---------- | ------------------------------ |
+| `POSTGRES_DB`       | `opspilot` | Database name                  |
+| `POSTGRES_USER`     | `opspilot` | Role                           |
+| `POSTGRES_PASSWORD` | `opspilot` | Local-only password            |
+| `POSTGRES_PORT`     | `5432`     | Host port (bound to 127.0.0.1) |
+
+Override them with a gitignored root `.env` if you need to. Data lives in
+the named Docker volume `postgres_data`.
+
+The API URI that matches those defaults:
+
+```
+DATABASE_URL=postgresql://opspilot:opspilot@127.0.0.1:5432/opspilot
+```
+
+**Hosted/staging (Supabase PostgreSQL)**
+
+1. In the Supabase dashboard, copy a PostgreSQL URI (Settings → Database).
+2. Prefer a **direct** or **session-mode** URI for this long-lived Nest
+   process (client-side pooling is already handled by `pg`).
+3. Put that URI in `apps/api/.env` as `DATABASE_URL`. Include
+   `sslmode=require` when the provider requires TLS.
+4. Never commit the Supabase URI. Never add it to `apps/web`.
+
+The application does not hard-code Supabase hostnames, project refs, or
+clients. Any standard PostgreSQL URI works.
+
+**Verify connectivity**
+
+After `docker compose up -d` and `bun run dev --filter=api`:
+
+- [http://localhost:3000/health](http://localhost:3000/health) — process
+  liveness (`{"status":"ok"}`)
+- [http://localhost:3000/health/ready](http://localhost:3000/health/ready)
+  — `200` when `SELECT 1` succeeds, `503` when PostgreSQL is down or
+  `DATABASE_URL` is unset. Responses do not include credentials.
 
 ## Quality checks
 
@@ -151,8 +200,9 @@ bun run test:cov    # unit tests with coverage
 bun run test:e2e    # E2E tests
 ```
 
-No extra environment variables, secrets, Docker, or PostgreSQL are required
-for the current tests. E2E tests boot Nest in-process.
+No extra secrets are required. GitHub Actions CI does not start PostgreSQL.
+Unit and E2E tests still pass without a database. `/health/ready` returns
+503 when PostgreSQL is unavailable.
 
 **Conventions (API)**
 
@@ -181,8 +231,10 @@ CI uses Node.js 24 (`engines.node`) and Bun 1.3.13
 | E2E tests        | `cd apps/api && bun run test:e2e` |
 | Production build | `bun run build`                   |
 
-CI does not copy `.env` files, does not use production secrets, and does not
-deploy. Example files under `.env.example` are documentation only.
+CI does not copy `.env` files, does not start PostgreSQL, does not use
+production secrets, and does not deploy. Example files under
+`.env.example` are documentation only. Unit and E2E tests do not require a
+running database.
 
 **Reproduce CI locally**
 
@@ -235,10 +287,11 @@ Symptoms: missing packages, lockfile errors, or a broken `node_modules`.
 
 ### Ports already in use
 
-| App | Default port | Configured by                               |
-| --- | ------------ | ------------------------------------------- |
-| API | 3000         | `PORT` in `apps/api/.env`, otherwise `3000` |
-| Web | 3001         | `apps/web` `next dev --port 3001`           |
+| App        | Default port | Configured by                                 |
+| ---------- | ------------ | --------------------------------------------- |
+| API        | 3000         | `PORT` in `apps/api/.env`, otherwise `3000`   |
+| Web        | 3001         | `apps/web` `next dev --port 3001`             |
+| PostgreSQL | 5432         | `POSTGRES_PORT` (Compose, bound to 127.0.0.1) |
 
 If `bun run dev` fails because a port is taken, stop the other process or
 set `PORT` in `apps/api/.env`. The web port is set in
@@ -247,12 +300,21 @@ the API.
 
 ### PostgreSQL is not running
 
-The apps and current tests do not connect to PostgreSQL yet. When
-database-backed work is added, connection errors usually mean PostgreSQL is
-not running or `apps/api/.env` is missing the documented connection
-variable. Local PostgreSQL setup will be documented with that
-infrastructure. Do not add Docker or a database URL for the current
-foundation.
+Symptoms: `/health/ready` returns `503` with
+`{"status":"not_ready","database":"unavailable"}`. Logs may mention a ping
+failure; they must not print the password.
+
+```sh
+docker compose ps
+docker compose up -d
+```
+
+Confirm `apps/api/.env` has `DATABASE_URL` matching the Compose defaults
+(see `apps/api/.env.example`). For Supabase, confirm you used the dashboard
+URI in `apps/api/.env` only, and that the string is not committed.
+
+If port 5432 is already in use, set `POSTGRES_PORT` in a root `.env` and
+update `DATABASE_URL` to the same port.
 
 ## Useful links
 
