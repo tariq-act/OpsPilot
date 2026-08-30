@@ -246,6 +246,14 @@ bun run build
 cd apps/api && bun run test && bun run test:e2e
 ```
 
+**Pull request review**
+
+OpenRabbit runs on non-draft pull requests via
+[`.github/workflows/reviewer.yml`](.github/workflows/reviewer.yml). It posts a
+summary and inline comments using OpenRouter. Add a repository Actions secret
+named `LLM_API_KEY` (OpenRouter, Groq, or Google AI Studio). Reviews fail until
+that secret exists.
+
 ## Troubleshooting
 
 ### Incorrect Bun or Node.js version

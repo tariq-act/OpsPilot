@@ -1,0 +1,33 @@
+name: OpenRabbit Reviewer
+
+on:
+  pull_request_target:
+    types: [opened, reopened, edited, synchronize]
+
+concurrency:
+  group: openrabbit-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    name: Review pull request
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event.pull_request.draft == false
+    steps:
+      # Do not checkout the PR HEAD. pull_request_target runs with
+      # repository secrets and a write token on the base branch.
+      - name: OpenRabbit
+        uses: aryanbrite/openrabbit@bcd69296ca5ff18e10753bf0c170ff4fa5dfc050 # v0.8.7
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          llm_api_key: ${{ secrets.LLM_API_KEY }}
+          llm_provider: openrouter
+          llm_model: openrouter/free
+          review_mode: both
+          tone_mode: balanced
+          debiased_mode: "true"
