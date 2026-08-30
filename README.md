@@ -251,11 +251,13 @@ cd apps/api && bun run test && bun run test:e2e
 OpenRabbit runs on non-draft pull requests via
 [`.github/workflows/reviewer.yml`](.github/workflows/reviewer.yml) (`pull_request`
 for same-repo PRs, `pull_request_target` for forks). It posts a summary and
-inline comments using Gemini (`gemini-2.5-flash`) through Google's
-OpenAI-compatible API. Add a **GitHub Actions** repository secret named
-`LLM_API_KEY` whose value is the Google AI Studio key (not the name of the
-key). Naming a key `LLM_API_KEY` in AI Studio does not create the GitHub
-secret. Reviews fail until that GitHub secret exists.
+inline comments using Gemini through Google's OpenAI-compatible API.
+
+Add a **GitHub Actions** repository secret named `LLM_API_KEY` (Google AI
+Studio key value). Optionally set the Actions variable `OPENRABBIT_LLM_MODEL`
+(for example `gemini-3.7-flash` or `gemini-3.1-pro-preview`) under Settings →
+Secrets and variables → Actions → Variables. If unset, the workflow defaults to
+`gemini-3.7-flash`.
 
 ## Troubleshooting
 

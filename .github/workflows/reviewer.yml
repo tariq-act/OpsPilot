@@ -3,7 +3,6 @@ name: OpenRabbit Reviewer
 on:
   pull_request:
     types: [opened, reopened, edited, synchronize]
-
   pull_request_target:
     types: [opened, reopened, edited, synchronize]
 
@@ -23,7 +22,6 @@ jobs:
 
     # Same-repo PRs: pull_request only (workflow from the branch, secrets available).
     # Fork PRs: pull_request_target only (secrets are withheld from pull_request).
-
     if: >
       github.event.pull_request.draft == false &&
       (
@@ -48,42 +46,16 @@ jobs:
           fi
 
       - name: OpenRabbit
-        id: openrabbit
-        continue-on-error: true
         uses: aryanbrite/openrabbit@bcd69296ca5ff18e10753bf0c170ff4fa5dfc050 # v0.8.7
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           llm_api_key: ${{ secrets.LLM_API_KEY }}
-
-          # OpenAI-compatible adapter; traffic goes directly to Gemini.
+          # OpenAI-compatible adapter; traffic goes to Gemini.
           llm_provider: openrouter
           llm_api_url: https://generativelanguage.googleapis.com/v1beta/openai
-          llm_model: gemini-3.7-flash
-
+          # Set Actions variable OPENRABBIT_LLM_MODEL to change the model
+          # (Settings → Secrets and variables → Actions → Variables).
+          llm_model: ${{ vars.OPENRABBIT_LLM_MODEL || 'gemini-3.7-flash' }}
           review_mode: both
           tone_mode: balanced
           debiased_mode: "true"
-
-      - name: Comment Gemini availability warning
-        if: steps.openrabbit.outcome == 'failure'
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          gh pr comment "$PR_NUMBER" --repo "$GH_REPO" --body "$(cat <<'EOF'
-          ⚠️ **OpenRabbit review temporarily unavailable**
-
-          OpenRabbit could not complete the AI code review because the Gemini model is currently experiencing high demand.
-
-          > This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
-
-          The pull request itself is **not blocked** by this issue. You can retry the workflow later to run the OpenRabbit review again.
-          EOF
-          )"
-
-      - name: Report OpenRabbit warning
-        if: always() && steps.openrabbit.outcome == 'failure'
-        run: |
-          echo "::warning::OpenRabbit review was unavailable because the Gemini model is currently experiencing high demand. The PR was not blocked."
