@@ -31,6 +31,11 @@ jobs:
          github.event.pull_request.head.repo.full_name != github.repository)
       )
 
+    env:
+      # Single model from Actions variable; default if unset.
+      LLM_MODEL: ${{ vars.OPENRABBIT_LLM_MODEL || 'gemini-3.7-flash' }}
+      OPENRABBIT_REF: bcd69296ca5ff18e10753bf0c170ff4fa5dfc050
+
     steps:
       # Do not checkout the PR HEAD.
       # pull_request_target runs with repository secrets and a write token
@@ -45,17 +50,109 @@ jobs:
             exit 1
           fi
 
-      - name: OpenRabbit
-        uses: aryanbrite/openrabbit@bcd69296ca5ff18e10753bf0c170ff4fa5dfc050 # v0.8.7
+      # Trusted OpenRabbit source at a pinned SHA — not PR code. Needed so we
+      # can capture Gemini high-demand errors and soft-succeed with a PR comment.
+      - name: Fetch OpenRabbit v0.8.7
+        uses: actions/checkout@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          llm_api_key: ${{ secrets.LLM_API_KEY }}
-          # OpenAI-compatible adapter; traffic goes to Gemini.
-          llm_provider: openrouter
-          llm_api_url: https://generativelanguage.googleapis.com/v1beta/openai
-          # Set Actions variable OPENRABBIT_LLM_MODEL to change the model
-          # (Settings → Secrets and variables → Actions → Variables).
-          llm_model: ${{ vars.OPENRABBIT_LLM_MODEL || 'gemini-3.7-flash' }}
-          review_mode: both
-          tone_mode: balanced
-          debiased_mode: "true"
+          repository: aryanbrite/openrabbit
+          ref: ${{ env.OPENRABBIT_REF }}
+          path: openrabbit
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+
+      - name: Install and build OpenRabbit
+        working-directory: openrabbit
+        run: |
+          npm install
+          npm run build
+
+      - name: OpenRabbit review
+        id: review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          INPUT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          INPUT_LLM_PROVIDER: openrouter
+          INPUT_LLM_API_URL: https://generativelanguage.googleapis.com/v1beta/openai
+          INPUT_LLM_MODEL: ${{ env.LLM_MODEL }}
+          INPUT_REVIEW_MODE: both
+          INPUT_TONE_MODE: balanced
+          INPUT_REVIEW_LENS: default
+          INPUT_DEBIASED_MODE: "true"
+          LLM_PROVIDER: openrouter
+          LLM_API_URL: https://generativelanguage.googleapis.com/v1beta/openai
+          REVIEW_MODE: both
+          TONE_MODE: balanced
+          REVIEW_LENS: default
+          DEBIASED_MODE: "true"
+        working-directory: openrabbit
+        run: |
+          set -uo pipefail
+
+          echo "::notice::OpenRabbit review with model ${LLM_MODEL}"
+
+          set +e
+          log="$(node dist/action.js 2>&1)"
+          status=$?
+          set -e
+          printf '%s\n' "$log"
+
+          if [ "$status" -eq 0 ]; then
+            echo "result=success" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if echo "$log" | grep -Eiq \
+            'LLM API error 503|LLM API error 429|LLM API error 502|LLM API error 504|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand|try again later|capacity|temporarily unavailable'; then
+            echo "::warning::Gemini is temporarily unavailable (high demand / rate limit). Posting a PR comment and succeeding the check."
+            echo "result=unavailable" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "::error::OpenRabbit failed with a non-temporary error. See log above."
+          echo "result=failed" >> "$GITHUB_OUTPUT"
+          exit 1
+
+      - name: Comment Gemini availability warning
+        if: steps.review.outputs.result == 'unavailable'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          COMMENT_MARKER: "<!-- openrabbit-gemini-unavailable -->"
+        run: |
+          set -euo pipefail
+
+          body="$(cat <<EOF
+          ${COMMENT_MARKER}
+          ⚠️ **OpenRabbit review temporarily unavailable**
+
+          OpenRabbit could not complete the AI code review because Gemini model \`${LLM_MODEL}\` is currently experiencing high demand.
+
+          > This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+
+          The pull request itself is **not blocked**. You can rerun the workflow later, or change the Actions variable \`OPENRABBIT_LLM_MODEL\` to another model.
+          EOF
+          )"
+
+          existing_id="$(
+            gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate \
+              --jq "[.[] | select(.body | contains(\"${COMMENT_MARKER}\")) | .id] | .[0] // empty"
+          )"
+
+          payload="$(jq -n --arg body "$body" '{body: $body}')"
+
+          if [ -n "$existing_id" ]; then
+            echo "$payload" | gh api --method PATCH "repos/${GH_REPO}/issues/${PR_NUMBER}/comments/${existing_id}" --input -
+            echo "Updated existing availability warning comment ${existing_id}."
+          else
+            echo "$payload" | gh api --method POST "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --input -
+            echo "Posted availability warning comment."
+          fi

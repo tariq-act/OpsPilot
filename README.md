@@ -253,11 +253,90 @@ OpenRabbit runs on non-draft pull requests via
 for same-repo PRs, `pull_request_target` for forks). It posts a summary and
 inline comments using Gemini through Google's OpenAI-compatible API.
 
-Add a **GitHub Actions** repository secret named `LLM_API_KEY` (Google AI
-Studio key value). Optionally set the Actions variable `OPENRABBIT_LLM_MODEL`
-(for example `gemini-3.7-flash` or `gemini-3.1-pro-preview`) under Settings →
-Secrets and variables → Actions → Variables. If unset, the workflow defaults to
-`gemini-3.7-flash`.
+**Required secret**
+
+1. Go to **Settings → Secrets and variables → Actions → Secrets**.
+2. Create `LLM_API_KEY` with your Google AI Studio API key value.
+
+**Optional model variable**
+
+1. Go to **Settings → Secrets and variables → Actions → Variables**.
+2. Create `OPENRABBIT_LLM_MODEL`.
+3. Paste **one** model id from the lists below (exact string, no quotes).
+
+If `OPENRABBIT_LLM_MODEL` is unset, the workflow defaults to `gemini-3.7-flash`.
+
+Google AI Pro / Ultra consumer plans are not separate API model names. Paid API
+billing mainly affects quotas; you still paste one of the ids below.
+
+**Free / Flash (copy one)**
+
+```text
+gemini-3.7-flash
+```
+
+```text
+gemini-3.6-flash
+```
+
+```text
+gemini-3.5-flash
+```
+
+```text
+gemini-3-flash-preview
+```
+
+```text
+gemini-2.5-flash
+```
+
+```text
+gemini-3.1-flash-lite
+```
+
+```text
+gemini-3.5-flash-lite
+```
+
+```text
+gemini-2.5-flash-lite
+```
+
+```text
+gemini-flash-latest
+```
+
+```text
+gemini-flash-lite-latest
+```
+
+**Pro (copy one)**
+
+```text
+gemini-3.1-pro-preview
+```
+
+```text
+gemini-3.1-pro-preview-customtools
+```
+
+```text
+gemini-2.5-pro
+```
+
+```text
+gemini-pro-latest
+```
+
+Image-only models (`gemini-3-pro-image`, `gemini-3.1-flash-image`, and similar)
+are not recommended for PR review. If a model returns 404 or 503, switch
+`OPENRABBIT_LLM_MODEL` to another id from these lists.
+
+When Gemini returns high demand / 503 / 429, the workflow posts a warning
+comment on the PR and **does not fail** the GitHub check. Other errors (missing
+or invalid `LLM_API_KEY`, bad config) still fail the job.
+
 
 ## Troubleshooting
 
