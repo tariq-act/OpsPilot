@@ -37,7 +37,8 @@ docker compose version
 **PostgreSQL** is the application database. Only the NestJS API connects to
 it. Next.js must not connect to PostgreSQL or Supabase. Local development
 uses PostgreSQL 16 via Docker Compose. Hosted/staging uses Supabase
-PostgreSQL through the same `DATABASE_URL` connection string.
+PostgreSQL with the same discrete `DATABASE_*` settings (host, port, name,
+user, password) — not a single connection URI.
 
 ## Getting started
 
@@ -61,9 +62,9 @@ the API (`nest start --watch` on port 3000) and the web app
 overridden.
 
 No extra secrets are required for local Docker PostgreSQL. The API listens
-on port 3000 when `PORT` is unset. Copy `apps/api/.env.example` so
-`DATABASE_URL` points at the Compose database. Unit and E2E tests do not
-require PostgreSQL to pass.
+on port 3000 when `PORT` is unset. Copy `apps/api/.env.example` so the
+`DATABASE_*` variables match the Compose database. Unit and E2E tests do
+not require PostgreSQL to pass.
 
 Run a single app:
 
@@ -96,12 +97,16 @@ Application env files are loaded from each app directory, not the repo root.
 
 **Currently documented variables**
 
-| Variable              | App        | Required                     | Purpose                                                                            | Example                                                  |
-| --------------------- | ---------- | ---------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `PORT`                | `apps/api` | Optional                     | HTTP listen port. Default `3000`.                                                  | `3000`                                                   |
-| `NODE_ENV`            | all        | Optional                     | Runtime/build environment.                                                         | `development`                                            |
-| `NEXT_PUBLIC_API_URL` | `apps/web` | Optional                     | Browser-safe API origin. Not read yet.                                             | `http://localhost:3000`                                  |
-| `DATABASE_URL`        | `apps/api` | Required for `/health/ready` | PostgreSQL URI. Local default below; Supabase URI for hosted. Never in `apps/web`. | `postgresql://opspilot:opspilot@127.0.0.1:5432/opspilot` |
+| Variable              | App        | Required                     | Purpose                                                                 | Example                 |
+| --------------------- | ---------- | ---------------------------- | ----------------------------------------------------------------------- | ----------------------- |
+| `PORT`                | `apps/api` | Optional                     | HTTP listen port. Default `3000`.                                       | `3000`                  |
+| `NODE_ENV`            | all        | Optional                     | Runtime/build environment.                                              | `development`           |
+| `NEXT_PUBLIC_API_URL` | `apps/web` | Optional                     | Browser-safe API origin. Not read yet.                                  | `http://localhost:3000` |
+| `DATABASE_HOST`       | `apps/api` | Required for `/health/ready` | PostgreSQL host. Never in `apps/web`.                                   | `localhost`             |
+| `DATABASE_PORT`       | `apps/api` | Required for `/health/ready` | PostgreSQL port.                                                        | `5432`                  |
+| `DATABASE_NAME`       | `apps/api` | Required for `/health/ready` | Database name.                                                          | `opspilot`              |
+| `DATABASE_USER`       | `apps/api` | Required for `/health/ready` | Database role.                                                          | `opspilot`              |
+| `DATABASE_PASSWORD`   | `apps/api` | Required for `/health/ready` | Database password. Local Docker default only; never commit real secrets.| `opspilot`              |
 
 **Secrets**
 
@@ -113,49 +118,77 @@ Application env files are loaded from each app directory, not the repo root.
 
 ### PostgreSQL
 
-Only `apps/api` connects to PostgreSQL, using `node-postgres` (`pg`) and a
-standard connection URI. There is no ORM and no Supabase JavaScript client.
+Only `apps/api` connects to PostgreSQL, using `node-postgres` (`pg`) with
+discrete `DATABASE_*` environment variables. There is no ORM, no migrations,
+and no product tables in this foundation step.
 
-**Local (Docker Compose)**
+**Local Docker PostgreSQL vs hosted Supabase**
+
+| Concern              | Local (Docker Compose)                                      | Hosted / staging (Supabase)                                      |
+| -------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------- |
+| How you run Postgres | `docker compose up -d` from the repo root                   | Managed by Supabase; no local container                          |
+| Where config lives   | `apps/api/.env` (from `.env.example`)                       | Same `DATABASE_*` keys in `apps/api/.env` with dashboard values  |
+| Credentials          | Local-only defaults in examples (not production secrets)    | Values from Supabase Settings → Database; never commit them      |
+| Data persistence     | Named Docker volume `postgres_data`                         | Supabase-managed storage                                         |
+| Who connects         | NestJS API only                                             | NestJS API only — never `apps/web`                               |
+
+**Start PostgreSQL (local)**
 
 From the repository root:
 
 ```sh
 docker compose up -d          # start PostgreSQL 16 (or bun run db:up)
 docker compose ps             # status (or bun run db:status)
-docker compose down           # stop; keeps the named volume
-docker compose down -v        # stop and delete local data
 ```
 
-Local defaults (not production secrets):
+Wait until the container is healthy (`docker compose ps` shows healthy).
 
-| Compose variable    | Default    | Purpose                        |
-| ------------------- | ---------- | ------------------------------ |
-| `POSTGRES_DB`       | `opspilot` | Database name                  |
-| `POSTGRES_USER`     | `opspilot` | Role                           |
-| `POSTGRES_PASSWORD` | `opspilot` | Local-only password            |
-| `POSTGRES_PORT`     | `5432`     | Host port (bound to 127.0.0.1) |
+**Configure the API (local)**
 
-Override them with a gitignored root `.env` if you need to. Data lives in
-the named Docker volume `postgres_data`.
-
-The API URI that matches those defaults:
-
+```sh
+cp apps/api/.env.example apps/api/.env
 ```
-DATABASE_URL=postgresql://opspilot:opspilot@127.0.0.1:5432/opspilot
+
+Local Compose defaults that match `compose.yaml` (not production secrets):
+
+| API variable          | Local default | Compose counterpart |
+| --------------------- | ------------- | ------------------- |
+| `DATABASE_HOST`       | `localhost`   | host-mapped port    |
+| `DATABASE_PORT`       | `5432`        | `POSTGRES_PORT`     |
+| `DATABASE_NAME`       | `opspilot`    | `POSTGRES_DB`       |
+| `DATABASE_USER`       | `opspilot`    | `POSTGRES_USER`     |
+| `DATABASE_PASSWORD`   | `opspilot`    | `POSTGRES_PASSWORD` |
+
+Override Compose container settings with a gitignored root `.env` if needed
+(`POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`). Keep
+API connection settings in `apps/api/.env` only. Data lives in the named
+Docker volume `postgres_data`.
+
+**Stop PostgreSQL (local)**
+
+```sh
+docker compose down           # stop; keeps the named volume (or bun run db:down)
+```
+
+**Reset local database data**
+
+```sh
+docker compose down -v        # stop and delete the postgres_data volume
+docker compose up -d          # recreate an empty database
 ```
 
 **Hosted/staging (Supabase PostgreSQL)**
 
-1. In the Supabase dashboard, copy a PostgreSQL URI (Settings → Database).
-2. Prefer a **direct** or **session-mode** URI for this long-lived Nest
-   process (client-side pooling is already handled by `pg`).
-3. Put that URI in `apps/api/.env` as `DATABASE_URL`. Include
-   `sslmode=require` when the provider requires TLS.
-4. Never commit the Supabase URI. Never add it to `apps/web`.
+1. In the Supabase dashboard, open Settings → Database.
+2. Copy the host, port, database name, user, and password (prefer a
+   **direct** or **session-mode** connection for this long-lived Nest
+   process; client-side pooling is already handled by `pg`).
+3. Put those values in `apps/api/.env` as `DATABASE_HOST`, `DATABASE_PORT`,
+   `DATABASE_NAME`, `DATABASE_USER`, and `DATABASE_PASSWORD`.
+4. Never commit Supabase credentials. Never add them to `apps/web`.
 
 The application does not hard-code Supabase hostnames, project refs, or
-clients. Any standard PostgreSQL URI works.
+database clients for this connectivity layer.
 
 **Verify connectivity**
 
@@ -164,8 +197,9 @@ After `docker compose up -d` and `bun run dev --filter=api`:
 - [http://localhost:3000/health](http://localhost:3000/health) — process
   liveness (`{"status":"ok"}`)
 - [http://localhost:3000/health/ready](http://localhost:3000/health/ready)
-  — `200` when `SELECT 1` succeeds, `503` when PostgreSQL is down or
-  `DATABASE_URL` is unset. Responses do not include credentials.
+  — `200` when `SELECT 1` succeeds, `503` when PostgreSQL is down or any
+  required `DATABASE_*` variable is missing. Responses do not include
+  credentials.
 
 ## Quality checks
 
@@ -401,12 +435,13 @@ docker compose ps
 docker compose up -d
 ```
 
-Confirm `apps/api/.env` has `DATABASE_URL` matching the Compose defaults
-(see `apps/api/.env.example`). For Supabase, confirm you used the dashboard
-URI in `apps/api/.env` only, and that the string is not committed.
+Confirm `apps/api/.env` has `DATABASE_HOST`, `DATABASE_PORT`,
+`DATABASE_NAME`, `DATABASE_USER`, and `DATABASE_PASSWORD` matching the
+Compose defaults (see `apps/api/.env.example`). For Supabase, confirm the
+dashboard values are only in `apps/api/.env` and are not committed.
 
 If port 5432 is already in use, set `POSTGRES_PORT` in a root `.env` and
-update `DATABASE_URL` to the same port.
+set `DATABASE_PORT` in `apps/api/.env` to the same port.
 
 ## Useful links
 

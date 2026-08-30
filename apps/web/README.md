@@ -14,7 +14,7 @@ bun run dev --filter=web
 
 Open [http://localhost:3001](http://localhost:3001) (the app is configured on port 3001 so it does not collide with the API on 3000).
 
-No environment variables are required to render the UI. Copy `.env.example` to `.env.local` for local overrides. Variables prefixed with `NEXT_PUBLIC_` are exposed to the browser; never put secrets in them. PostgreSQL and `DATABASE_URL` belong only in `apps/api`. The web app must not connect to PostgreSQL or Supabase.
+No environment variables are required to render the UI. Copy `.env.example` to `.env.local` for local overrides. Variables prefixed with `NEXT_PUBLIC_` are exposed to the browser; never put secrets in them. PostgreSQL and `DATABASE_*` belong only in `apps/api`. The web app must not connect to PostgreSQL or Supabase.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
