@@ -1,6 +1,8 @@
 name: OpenRabbit Reviewer
 
 on:
+  pull_request:
+    types: [opened, reopened, edited, synchronize]
   pull_request_target:
     types: [opened, reopened, edited, synchronize]
 
@@ -17,7 +19,14 @@ jobs:
     name: Review pull request
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    if: github.event.pull_request.draft == false
+    # Same-repo PRs: pull_request only (workflow from the branch, secrets available).
+    # Fork PRs: pull_request_target only (secrets are withheld from fork pull_request).
+    if: >
+      github.event.pull_request.draft == false &&
+      (
+        (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) ||
+        (github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name != github.repository)
+      )
     steps:
       # Do not checkout the PR HEAD. pull_request_target runs with
       # repository secrets and a write token on the base branch.
