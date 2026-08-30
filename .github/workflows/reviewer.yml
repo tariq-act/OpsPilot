@@ -47,7 +47,7 @@ jobs:
           # openrouter is the OpenAI-compatible adapter; traffic goes to Gemini.
           llm_provider: openrouter
           llm_api_url: https://generativelanguage.googleapis.com/v1beta/openai
-          llm_model: gemini-2.5-flash
+          llm_model: gemini-3.7-flash
           review_mode: both
           tone_mode: balanced
           debiased_mode: "true"
