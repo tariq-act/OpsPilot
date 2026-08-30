@@ -37,9 +37,9 @@ $ bun run dev --filter=api
 
 Or from this directory after a root `bun install`: `bun run dev` (watch mode) or `cp .env.example .env`.
 
-Environment files for this app live in `apps/api`. `PORT` is optional and defaults to `3000`. Do not commit `.env`.
+Environment files for this app live in `apps/api`. `PORT` is optional and defaults to `3000`. Set `DATABASE_URL` from `.env.example` (local Docker) or a Supabase PostgreSQL URI (hosted). Do not commit `.env`.
 
-PostgreSQL will be required for database-backed development. It is not provisioned in this repository yet. Current startup and tests do not need it.
+PostgreSQL is required for `/health/ready`. Start it from the repo root with `docker compose up -d`. The web app must not use `DATABASE_URL`. See the root README for Compose commands, Supabase setup, and troubleshooting.
 
 ## Compile and run the project
 
@@ -73,7 +73,7 @@ $ bun run test:cov
 $ bun run test:e2e
 ```
 
-No extra environment variables, secrets, or PostgreSQL are required. GitHub Actions CI runs `bun run test` and `bun run test:e2e` from `apps/api`. See the root README for local setup, troubleshooting, when CI runs, and how to reproduce it.
+No extra secrets are required for unit tests. GitHub Actions CI runs `bun run test` and `bun run test:e2e` from `apps/api` without PostgreSQL. `/health/ready` is `503` when the database is unavailable. See the root README for local Compose setup.
 
 ### Test conventions
 
