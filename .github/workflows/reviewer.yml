@@ -30,13 +30,24 @@ jobs:
     steps:
       # Do not checkout the PR HEAD. pull_request_target runs with
       # repository secrets and a write token on the base branch.
+      - name: Verify LLM_API_KEY
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: |
+          if [ -z "$LLM_API_KEY" ]; then
+            echo "::error::GitHub Actions secret LLM_API_KEY is empty. Add your Google AI Studio key under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
       - name: OpenRabbit
         uses: aryanbrite/openrabbit@bcd69296ca5ff18e10753bf0c170ff4fa5dfc050 # v0.8.7
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           llm_api_key: ${{ secrets.LLM_API_KEY }}
+          # openrouter is the OpenAI-compatible adapter; traffic goes to Gemini.
           llm_provider: openrouter
-          llm_model: openrouter/free
+          llm_api_url: https://generativelanguage.googleapis.com/v1beta/openai
+          llm_model: gemini-2.5-flash
           review_mode: both
           tone_mode: balanced
           debiased_mode: "true"
