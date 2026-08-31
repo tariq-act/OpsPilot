@@ -24,21 +24,21 @@ Install these before the first `bun install`:
 | --------------------------------------------- | ----------------------------- | ------------------------------------------ |
 | [Node.js](https://nodejs.org/)                | 24 or later                   | `package.json` `engines.node`              |
 | [Bun](https://bun.sh/)                        | 1.3.13                        | `package.json` `devEngines.packageManager` |
-| [Docker](https://docs.docker.com/get-docker/) | Compose v2 (`docker compose`) | Local PostgreSQL (`compose.yaml`)          |
+| [Docker](https://docs.docker.com/get-docker/) | Compose v2 (`docker compose`) | Optional local PostgreSQL (`compose.yaml`) |
 
 Confirm:
 
 ```sh
 node --version     # v24.x or later
 bun --version      # 1.3.13
-docker compose version
 ```
 
 **PostgreSQL** is the application database. Only the NestJS API connects to
-it. Next.js must not connect to PostgreSQL or Supabase. Local development
-uses PostgreSQL 16 via Docker Compose. Hosted/staging uses Supabase
-PostgreSQL with the same discrete `DATABASE_*` settings (host, port, name,
-user, password) — not a single connection URI.
+it. Next.js must not connect to PostgreSQL or Supabase. **Current development
+default is hosted Supabase PostgreSQL.** Local Docker Compose remains in the
+repo for later use but is not required right now. Connection settings use
+discrete `DATABASE_*` variables (host, port, name, user, password, optional
+SSL) — not a single connection URI.
 
 ## Getting started
 
@@ -46,11 +46,14 @@ From the repository root:
 
 ```sh
 bun install
-docker compose up -d
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env.local
 bun run dev
 ```
+
+Fill `DATABASE_*`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` in `apps/api/.env`
+from the Supabase dashboard (see PostgreSQL below). Do not commit that file.
+Do not start Docker Compose for database work right now.
 
 - API: [http://localhost:3000](http://localhost:3000)
 - Web: [http://localhost:3001](http://localhost:3001)
@@ -61,10 +64,8 @@ the API (`nest start --watch` on port 3000) and the web app
 (`process.loadEnvFile`). Existing process environment variables are not
 overridden.
 
-No extra secrets are required for local Docker PostgreSQL. The API listens
-on port 3000 when `PORT` is unset. Copy `apps/api/.env.example` so the
-`DATABASE_*` variables match the Compose database. Unit and E2E tests do
-not require PostgreSQL to pass.
+The API listens on port 3000 when `PORT` is unset. Unit and E2E tests do not
+require PostgreSQL to pass.
 
 Run a single app:
 
@@ -97,16 +98,19 @@ Application env files are loaded from each app directory, not the repo root.
 
 **Currently documented variables**
 
-| Variable              | App        | Required                     | Purpose                                                                 | Example                 |
-| --------------------- | ---------- | ---------------------------- | ----------------------------------------------------------------------- | ----------------------- |
-| `PORT`                | `apps/api` | Optional                     | HTTP listen port. Default `3000`.                                       | `3000`                  |
-| `NODE_ENV`            | all        | Optional                     | Runtime/build environment.                                              | `development`           |
-| `NEXT_PUBLIC_API_URL` | `apps/web` | Optional                     | Browser-safe API origin. Not read yet.                                  | `http://localhost:3000` |
-| `DATABASE_HOST`       | `apps/api` | Required for `/health/ready` | PostgreSQL host. Never in `apps/web`.                                   | `localhost`             |
-| `DATABASE_PORT`       | `apps/api` | Required for `/health/ready` | PostgreSQL port.                                                        | `5432`                  |
-| `DATABASE_NAME`       | `apps/api` | Required for `/health/ready` | Database name.                                                          | `opspilot`              |
-| `DATABASE_USER`       | `apps/api` | Required for `/health/ready` | Database role.                                                          | `opspilot`              |
-| `DATABASE_PASSWORD`   | `apps/api` | Required for `/health/ready` | Database password. Local Docker default only; never commit real secrets.| `opspilot`              |
+| Variable              | App        | Required                     | Purpose                                                                  | Example                         |
+| --------------------- | ---------- | ---------------------------- | ------------------------------------------------------------------------ | ------------------------------- |
+| `PORT`                | `apps/api` | Optional                     | HTTP listen port. Default `3000`.                                        | `3000`                          |
+| `NODE_ENV`            | all        | Optional                     | Runtime/build environment.                                               | `development`                   |
+| `NEXT_PUBLIC_API_URL` | `apps/web` | Optional                     | Browser-safe API origin. Not read yet.                                   | `http://localhost:3000`         |
+| `DATABASE_HOST`       | `apps/api` | Required for `/health/ready` | PostgreSQL host (Supabase). Never in `apps/web`.                         | *(from Supabase dashboard)*     |
+| `DATABASE_PORT`       | `apps/api` | Required for `/health/ready` | PostgreSQL port (often `5432` for direct).                               | `5432`                          |
+| `DATABASE_NAME`       | `apps/api` | Required for `/health/ready` | Database name.                                                           | `postgres`                      |
+| `DATABASE_USER`       | `apps/api` | Required for `/health/ready` | Database role.                                                           | *(from Supabase dashboard)*     |
+| `DATABASE_PASSWORD`   | `apps/api` | Required for `/health/ready` | Database password. Never commit real secrets.                            | *(from Supabase dashboard)*     |
+| `DATABASE_SSL`        | `apps/api` | Recommended for Supabase     | Enable TLS (`true` / `1` / `require`). Default off when unset.           | `true`                          |
+| `SUPABASE_URL`        | `apps/api` | Optional today               | Supabase project URL (Settings → API). Server-only.                      | *(from Supabase dashboard)*     |
+| `SUPABASE_ANON_KEY`   | `apps/api` | Optional today               | Supabase anon/publishable key. Server-only; never in `apps/web`.         | *(from Supabase dashboard)*     |
 
 **Secrets**
 
@@ -122,84 +126,55 @@ Only `apps/api` connects to PostgreSQL, using `node-postgres` (`pg`) with
 discrete `DATABASE_*` environment variables. There is no ORM, no migrations,
 and no product tables in this foundation step.
 
-**Local Docker PostgreSQL vs hosted Supabase**
+**Current path: hosted Supabase (recommended now)**
 
-| Concern              | Local (Docker Compose)                                      | Hosted / staging (Supabase)                                      |
-| -------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------- |
-| How you run Postgres | `docker compose up -d` from the repo root                   | Managed by Supabase; no local container                          |
-| Where config lives   | `apps/api/.env` (from `.env.example`)                       | Same `DATABASE_*` keys in `apps/api/.env` with dashboard values  |
-| Credentials          | Local-only defaults in examples (not production secrets)    | Values from Supabase Settings → Database; never commit them      |
-| Data persistence     | Named Docker volume `postgres_data`                         | Supabase-managed storage                                         |
-| Who connects         | NestJS API only                                             | NestJS API only — never `apps/web`                               |
+Local Docker PostgreSQL is **not** used for day-to-day development right now.
+Point the API at your Supabase project instead.
 
-**Start PostgreSQL (local)**
-
-From the repository root:
-
-```sh
-docker compose up -d          # start PostgreSQL 16 (or bun run db:up)
-docker compose ps             # status (or bun run db:status)
-```
-
-Wait until the container is healthy (`docker compose ps` shows healthy).
-
-**Configure the API (local)**
-
-```sh
-cp apps/api/.env.example apps/api/.env
-```
-
-Local Compose defaults that match `compose.yaml` (not production secrets):
-
-| API variable          | Local default | Compose counterpart |
-| --------------------- | ------------- | ------------------- |
-| `DATABASE_HOST`       | `localhost`   | host-mapped port    |
-| `DATABASE_PORT`       | `5432`        | `POSTGRES_PORT`     |
-| `DATABASE_NAME`       | `opspilot`    | `POSTGRES_DB`       |
-| `DATABASE_USER`       | `opspilot`    | `POSTGRES_USER`     |
-| `DATABASE_PASSWORD`   | `opspilot`    | `POSTGRES_PASSWORD` |
-
-Override Compose container settings with a gitignored root `.env` if needed
-(`POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`). Keep
-API connection settings in `apps/api/.env` only. Data lives in the named
-Docker volume `postgres_data`.
-
-**Stop PostgreSQL (local)**
-
-```sh
-docker compose down           # stop; keeps the named volume (or bun run db:down)
-```
-
-**Reset local database data**
-
-```sh
-docker compose down -v        # stop and delete the postgres_data volume
-docker compose up -d          # recreate an empty database
-```
-
-**Hosted/staging (Supabase PostgreSQL)**
-
-1. In the Supabase dashboard, open Settings → Database.
-2. Copy the host, port, database name, user, and password (prefer a
-   **direct** or **session-mode** connection for this long-lived Nest
-   process; client-side pooling is already handled by `pg`).
+1. In the Supabase dashboard, open **Settings → Database**.
+2. Copy host, port, database name, user, and password. Prefer a **direct** or
+   **session-mode** connection for this long-lived Nest process (`pg` already
+   pools on the client).
 3. Put those values in `apps/api/.env` as `DATABASE_HOST`, `DATABASE_PORT`,
    `DATABASE_NAME`, `DATABASE_USER`, and `DATABASE_PASSWORD`.
-4. Never commit Supabase credentials. Never add them to `apps/web`.
+4. Set `DATABASE_SSL=true` (required for Supabase TLS).
+5. Optionally set `SUPABASE_URL` and `SUPABASE_ANON_KEY` from **Settings → API**.
+6. Never commit Supabase credentials. Never add them to `apps/web`.
 
-The application does not hard-code Supabase hostnames, project refs, or
-database clients for this connectivity layer.
+| Concern              | Hosted Supabase (current)                                    | Local Docker Compose (optional later)                         |
+| -------------------- | ------------------------------------------------------------ | ------------------------------------------------------------- |
+| How you run Postgres | Managed by Supabase; no local container                      | `docker compose up -d` from the repo root                     |
+| Where config lives   | `DATABASE_*` in `apps/api/.env` from the dashboard           | Same keys with local Compose defaults                         |
+| TLS                  | `DATABASE_SSL=true`                                         | Usually unset / `false`                                       |
+| Who connects         | NestJS API only                                              | NestJS API only — never `apps/web`                            |
 
 **Verify connectivity**
 
-After `docker compose up -d` and `bun run dev --filter=api`:
+After configuring `apps/api/.env` and `bun run dev --filter=api`:
 
 - [http://localhost:3000/health](http://localhost:3000/health) — process
   liveness (`{"status":"ok"}`)
 - [http://localhost:3000/health/ready](http://localhost:3000/health/ready)
-  — `200` when `SELECT 1` succeeds, `503` when PostgreSQL is down or any
-  required `DATABASE_*` variable is missing. Responses do not include
+  — `200` when `SELECT 1` succeeds, `503` when PostgreSQL is unreachable or
+  any required `DATABASE_*` variable is missing. Responses do not include
   credentials.
+
+**Optional later: local Docker PostgreSQL**
+
+Compose config remains in `compose.yaml` for when you want a local database
+again. It is not part of the current default workflow.
+
+```sh
+docker compose up -d          # start PostgreSQL 16 (or bun run db:up)
+docker compose ps             # status (or bun run db:status)
+docker compose down           # stop; keeps the named volume (or bun run db:down)
+docker compose down -v        # stop and delete local data
+```
+
+If you switch back, use local defaults in `apps/api/.env` (`localhost` /
+`opspilot`) and set `DATABASE_SSL=false` or omit it. If host port 5432 is
+already taken, set `POSTGRES_PORT` in a gitignored root `.env` and match
+`DATABASE_PORT` in `apps/api/.env`.
 
 ## Quality checks
 
@@ -424,24 +399,20 @@ set `PORT` in `apps/api/.env`. The web port is set in
 `apps/web/package.json`; keep it away from 3000 so it does not collide with
 the API.
 
-### PostgreSQL is not running
+### PostgreSQL is not reachable
 
 Symptoms: `/health/ready` returns `503` with
 `{"status":"not_ready","database":"unavailable"}`. Logs may mention a ping
 failure; they must not print the password.
 
-```sh
-docker compose ps
-docker compose up -d
-```
+Confirm `apps/api/.env` has Supabase `DATABASE_HOST`, `DATABASE_PORT`,
+`DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, and `DATABASE_SSL=true`
+(see `apps/api/.env.example`). Values must come from the dashboard and must
+not be committed.
 
-Confirm `apps/api/.env` has `DATABASE_HOST`, `DATABASE_PORT`,
-`DATABASE_NAME`, `DATABASE_USER`, and `DATABASE_PASSWORD` matching the
-Compose defaults (see `apps/api/.env.example`). For Supabase, confirm the
-dashboard values are only in `apps/api/.env` and are not committed.
-
-If port 5432 is already in use, set `POSTGRES_PORT` in a root `.env` and
-set `DATABASE_PORT` in `apps/api/.env` to the same port.
+Local Docker is optional and unused in the current workflow. If you enable it
+later and port 5432 is already in use, set `POSTGRES_PORT` in a root `.env`
+and match `DATABASE_PORT` in `apps/api/.env`.
 
 ## Useful links
 
