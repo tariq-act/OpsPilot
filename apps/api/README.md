@@ -37,9 +37,9 @@ $ bun run dev --filter=api
 
 Or from this directory after a root `bun install`: `bun run dev` (watch mode) or `cp .env.example .env`.
 
-Environment files for this app live in `apps/api`. `PORT` is optional and defaults to `3000`. Set `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, and `DATABASE_PASSWORD` from `.env.example` (local Docker defaults) or from the Supabase dashboard (hosted). Do not commit `.env`.
+Environment files for this app live in `apps/api`. `PORT` is optional and defaults to `3000`. Set `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, and `DATABASE_SSL=true` from the Supabase dashboard (current default). Do not commit `.env`.
 
-PostgreSQL is required for `/health/ready`. Start local Postgres from the repo root with `docker compose up -d`. The web app must not use `DATABASE_*` variables. See the root README for Compose commands, stop/reset steps, Supabase setup, and troubleshooting.
+PostgreSQL is required for `/health/ready`. Local Docker Compose is optional and unused for now. The web app must not use `DATABASE_*` variables. See the root README for Supabase setup and troubleshooting.
 
 ## Compile and run the project
 

@@ -1,12 +1,18 @@
 import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { Pool } from "pg";
 
+function readSslEnabled(): boolean {
+  const raw = process.env.DATABASE_SSL?.trim().toLowerCase();
+  return raw === "true" || raw === "1" || raw === "require";
+}
+
 function readDatabaseConfig(): {
   host: string;
   port: number;
   database: string;
   user: string;
   password: string;
+  ssl: boolean;
 } | null {
   const host = process.env.DATABASE_HOST?.trim();
   const database = process.env.DATABASE_NAME?.trim();
@@ -23,7 +29,7 @@ function readDatabaseConfig(): {
     return null;
   }
 
-  return { host, port, database, user, password };
+  return { host, port, database, user, password, ssl: readSslEnabled() };
 }
 
 @Injectable()
@@ -48,6 +54,7 @@ export class DatabaseService implements OnModuleDestroy {
       user: config.user,
       password: config.password,
       connectionTimeoutMillis: 5_000,
+      ...(config.ssl ? { ssl: { rejectUnauthorized: true } } : {}),
     });
     this.pool.on("error", (error: Error) => {
       this.logger.error(`PostgreSQL pool error: ${error.message}`);
