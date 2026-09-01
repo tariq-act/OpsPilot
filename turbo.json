@@ -3,6 +3,7 @@
   "ui": "tui",
   "globalEnv": [
     "NODE_ENV",
+    "DATABASE_URL",
     "DATABASE_HOST",
     "DATABASE_PORT",
     "DATABASE_NAME",
