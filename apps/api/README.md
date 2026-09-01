@@ -62,6 +62,8 @@ bun run prisma:migrate:status    # migration status
 `PrismaService` is provided by `DatabaseModule` for future repositories. Do not
 run `prisma migrate reset` against the shared Supabase development database.
 
+See **[docs/PRISMA.md](docs/PRISMA.md)** for a full agent implementation guide and day-to-day Prisma usage.
+
 ## Compile and run the project
 
 ```bash

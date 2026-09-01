@@ -202,6 +202,8 @@ NestJS startup and disconnects on shutdown. `/health/ready` still uses the
 existing `pg` pool via `DatabaseService`; domain repositories are not added
 yet.
 
+See **[apps/api/docs/PRISMA.md](apps/api/docs/PRISMA.md)** for a full Prisma agent guide and usage reference.
+
 **Optional later: local Docker PostgreSQL**
 
 Compose config remains in `compose.yaml` for when you want a local database
