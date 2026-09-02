@@ -23,7 +23,9 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+[Nest](https://github.com/nestjs/nest) API for OpsPilot. PostgreSQL access uses
+[Prisma](https://www.prisma.io/) (ORM/migrations) and `node-postgres` (`pg`) for
+the readiness health check.
 
 ## Project setup
 
@@ -37,9 +39,30 @@ $ bun run dev --filter=api
 
 Or from this directory after a root `bun install`: `bun run dev` (watch mode) or `cp .env.example .env`.
 
-Environment files for this app live in `apps/api`. `PORT` is optional and defaults to `3000`. Set `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, and `DATABASE_SSL=true` from the Supabase dashboard (current default). Do not commit `.env`.
+Environment files for this app live in `apps/api`. `PORT` is optional and defaults to `3000`. Set `DATABASE_URL` or `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, and `DATABASE_SSL=true` from the Supabase dashboard (current default). Do not commit `.env`.
 
-PostgreSQL is required for `/health/ready`. Local Docker Compose is optional and unused for now. The web app must not use `DATABASE_*` variables. See the root README for Supabase setup and troubleshooting.
+PostgreSQL is required for `/health/ready`. Local Docker Compose is optional and unused for now. The web app must not use database variables. See the root README for Supabase setup, Prisma workflow, and troubleshooting.
+
+## Prisma
+
+| Path | Purpose |
+| ---- | ------- |
+| `prisma/schema.prisma` | Schema (foundation only; no product models yet) |
+| `prisma/migrations/` | Committed migrations |
+| `prisma.config.ts` | CLI config — resolves `DATABASE_URL` from env |
+| `src/generated/prisma/` | Generated client (run `bun run prisma:generate`) |
+
+```bash
+bun run prisma:generate          # generate client
+bun run prisma:migrate           # dev migration from schema changes
+bun run prisma:migrate:deploy    # apply migrations
+bun run prisma:migrate:status    # migration status
+```
+
+`PrismaService` is provided by `DatabaseModule` for future repositories. Do not
+run `prisma migrate reset` against the shared Supabase development database.
+
+See **[docs/PRISMA.md](docs/PRISMA.md)** for a full agent implementation guide and day-to-day Prisma usage.
 
 ## Compile and run the project
 

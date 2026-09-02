@@ -38,7 +38,8 @@ it. Next.js must not connect to PostgreSQL or Supabase. **Current development
 default is hosted Supabase PostgreSQL.** Local Docker Compose remains in the
 repo for later use but is not required right now. Connection settings use
 discrete `DATABASE_*` variables (host, port, name, user, password, optional
-SSL) — not a single connection URI.
+SSL) — or a single `DATABASE_URL` for Prisma. When `DATABASE_URL` is unset,
+the API derives it from `DATABASE_*`.
 
 ## Getting started
 
@@ -51,8 +52,9 @@ cp apps/web/.env.example apps/web/.env.local
 bun run dev
 ```
 
-Fill `DATABASE_*`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` in `apps/api/.env`
-from the Supabase dashboard (see PostgreSQL below). Do not commit that file.
+Fill `DATABASE_*` (or `DATABASE_URL`), `SUPABASE_URL`, and `SUPABASE_ANON_KEY`
+in `apps/api/.env` from the Supabase dashboard (see PostgreSQL below). Do not
+commit that file.
 Do not start Docker Compose for database work right now.
 
 - API: [http://localhost:3000](http://localhost:3000)
@@ -103,6 +105,7 @@ Application env files are loaded from each app directory, not the repo root.
 | `PORT`                | `apps/api` | Optional                     | HTTP listen port. Default `3000`.                                        | `3000`                          |
 | `NODE_ENV`            | all        | Optional                     | Runtime/build environment.                                               | `development`                   |
 | `NEXT_PUBLIC_API_URL` | `apps/web` | Optional                     | Browser-safe API origin. Not read yet.                                   | `http://localhost:3000`         |
+| `DATABASE_URL`        | `apps/api` | Required for Prisma          | PostgreSQL connection URL (Prisma CLI + ORM). Built from `DATABASE_*` when unset. Never in `apps/web`. | `postgresql://USER:PASSWORD@HOST:5432/DB?sslmode=require` |
 | `DATABASE_HOST`       | `apps/api` | Required for `/health/ready` | PostgreSQL host (Supabase). Never in `apps/web`.                         | *(from Supabase dashboard)*     |
 | `DATABASE_PORT`       | `apps/api` | Required for `/health/ready` | PostgreSQL port (often `5432` for direct).                               | `5432`                          |
 | `DATABASE_NAME`       | `apps/api` | Required for `/health/ready` | Database name.                                                           | `postgres`                      |
@@ -122,9 +125,11 @@ Application env files are loaded from each app directory, not the repo root.
 
 ### PostgreSQL
 
-Only `apps/api` connects to PostgreSQL, using `node-postgres` (`pg`) with
-discrete `DATABASE_*` environment variables. There is no ORM, no migrations,
-and no product tables in this foundation step.
+Only `apps/api` connects to PostgreSQL. **Prisma** is the ORM; the database is
+hosted **Supabase PostgreSQL**. Connection settings use `DATABASE_URL` (preferred
+for Prisma) or discrete `DATABASE_*` variables (host, port, name, user, password,
+optional SSL). The API builds `DATABASE_URL` from `DATABASE_*` when the URL is
+unset. Next.js must not connect to PostgreSQL or Supabase.
 
 **Current path: hosted Supabase (recommended now)**
 
@@ -136,7 +141,8 @@ Point the API at your Supabase project instead.
    **session-mode** connection for this long-lived Nest process (`pg` already
    pools on the client).
 3. Put those values in `apps/api/.env` as `DATABASE_HOST`, `DATABASE_PORT`,
-   `DATABASE_NAME`, `DATABASE_USER`, and `DATABASE_PASSWORD`.
+   `DATABASE_NAME`, `DATABASE_USER`, and `DATABASE_PASSWORD` — or set
+   `DATABASE_URL` directly (see `apps/api/.env.example`).
 4. Set `DATABASE_SSL=true` (required for Supabase TLS).
 5. Optionally set `SUPABASE_URL` and `SUPABASE_ANON_KEY` from **Settings → API**.
 6. Never commit Supabase credentials. Never add them to `apps/web`.
@@ -144,7 +150,7 @@ Point the API at your Supabase project instead.
 | Concern              | Hosted Supabase (current)                                    | Local Docker Compose (optional later)                         |
 | -------------------- | ------------------------------------------------------------ | ------------------------------------------------------------- |
 | How you run Postgres | Managed by Supabase; no local container                      | `docker compose up -d` from the repo root                     |
-| Where config lives   | `DATABASE_*` in `apps/api/.env` from the dashboard           | Same keys with local Compose defaults                         |
+| Where config lives   | `DATABASE_URL` and/or `DATABASE_*` in `apps/api/.env` from the dashboard | Same keys with local Compose defaults                         |
 | TLS                  | `DATABASE_SSL=true`                                         | Usually unset / `false`                                       |
 | Who connects         | NestJS API only                                              | NestJS API only — never `apps/web`                            |
 
@@ -158,6 +164,45 @@ After configuring `apps/api/.env` and `bun run dev --filter=api`:
   — `200` when `SELECT 1` succeeds, `503` when PostgreSQL is unreachable or
   any required `DATABASE_*` variable is missing. Responses do not include
   credentials.
+
+### Prisma ORM and migrations
+
+The NestJS API uses [Prisma](https://www.prisma.io/) as the ORM against
+Supabase PostgreSQL. Schema and migrations live in `apps/api`:
+
+| Path | Purpose |
+| ---- | ------- |
+| `apps/api/prisma/schema.prisma` | Prisma schema (no product tables yet) |
+| `apps/api/prisma/migrations/` | Committed SQL migrations |
+| `apps/api/prisma.config.ts` | Prisma CLI configuration (connection URL) |
+| `apps/api/src/generated/prisma/` | Generated Prisma Client (gitignored; run `prisma:generate`) |
+
+**Environment:** set `DATABASE_URL` in `apps/api/.env`, or keep using
+`DATABASE_*` — `prisma.config.ts` and the API derive the URL automatically.
+Never commit real credentials. Never add database variables to `apps/web`.
+
+**Prerequisites:** a Supabase development database with network access from
+your machine. No local PostgreSQL or Docker is required.
+
+From `apps/api` (or the repo root via `bun run --filter=api …`):
+
+```sh
+bun run prisma:generate          # generate Prisma Client (also runs before build/check-types)
+bun run prisma:migrate           # create/apply a development migration from schema changes
+bun run prisma:migrate:deploy    # apply pending migrations (e.g. staging/production)
+bun run prisma:migrate:status    # inspect migration history vs the database
+```
+
+To reproduce the schema on a clean database, apply committed migrations with
+`prisma:migrate:deploy`. Do **not** run `prisma migrate reset` against the
+shared Supabase development database.
+
+`PrismaService` (`apps/api/src/database/prisma.service.ts`) connects during
+NestJS startup and disconnects on shutdown. `/health/ready` still uses the
+existing `pg` pool via `DatabaseService`; domain repositories are not added
+yet.
+
+See **[apps/api/docs/PRISMA.md](apps/api/docs/PRISMA.md)** for a full Prisma agent guide and usage reference.
 
 **Optional later: local Docker PostgreSQL**
 
