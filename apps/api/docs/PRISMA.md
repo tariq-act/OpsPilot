@@ -136,7 +136,8 @@ This is **not implemented**. When you add a business entity:
 1. Edit `apps/api/prisma/schema.prisma`.
 2. Run `bun run prisma:migrate` from `apps/api`.
 3. Run `bun run prisma:generate` if the client was not already regenerated.
-4. Inject `PrismaService` from `DatabaseModule` and use `prismaService.prisma`.
+4. Import `DatabaseModule` in the feature module (it is not global) and inject
+   `PrismaService`. Use `prismaService.prisma`.
 5. Commit schema and migration files. Do not commit `src/generated/`.
 
 ## Commands to avoid

@@ -25,19 +25,32 @@ There are no authenticated or domain endpoints yet.
 ```text
 apps/api/src/
   main.ts                 bootstrap; loads .env; listens on PORT or 3000
-  app.module.ts           root module
+  app.module.ts           composition root
   app.controller.ts       GET /
   app.service.ts
-  health/                 HealthModule + HealthController
-  database/
-    database.module.ts    global DatabaseModule
+  health/                 HealthModule — liveness and readiness (not a product domain)
+  database/               DatabaseModule — Prisma + pg pool (not global)
+    database.module.ts
     database.service.ts   pg pool (health ping; discrete DATABASE_* only)
     prisma.service.ts     Prisma 7 client (@prisma/adapter-pg)
     database-url.ts       DATABASE_URL or build from DATABASE_*
   generated/prisma/       generated client (gitignored)
 ```
 
-`AppModule` imports `DatabaseModule` and `HealthModule`.
+`AppModule` is the composition root. It registers the root HTTP handler and
+imports `HealthModule`. It does not contain product logic or import
+persistence directly.
+
+`DatabaseModule` is persistence infrastructure. It is not global. Modules that
+need `DatabaseService` or `PrismaService` import it explicitly.
+`HealthModule` does this for `GET /health/ready`.
+
+There is no shared `common` module. Add a dedicated module only when more
+than one feature needs the same cross-cutting concern.
+
+Product domain modules are not implemented yet. Add one as `src/<domain>/`
+with its own NestJS module, then import that module from `AppModule`. Import
+`DatabaseModule` only in modules that need Prisma or the pg pool.
 
 ## Run the API
 
@@ -110,9 +123,9 @@ bun run prisma:migrate:status    # migration status
 `build` and `check-types` run `prisma:generate` first. When database env is
 unset, the Prisma CLI uses a local placeholder URL so generate can run in CI.
 
-`PrismaService` is provided by `DatabaseModule` for future repositories. Do
-not run `prisma migrate reset` against the shared Supabase development
-database.
+`PrismaService` is exported by `DatabaseModule` for future repositories.
+Feature modules must import `DatabaseModule` to inject it. Do not run
+`prisma migrate reset` against the shared Supabase development database.
 
 ## Lint and types
 
