@@ -1,45 +1,45 @@
 # OpsPilot
 
-OpsPilot is a Bun + Turborepo monorepo. This document is the local development
-guide: a clean checkout should be enough to install dependencies, configure
-environment files, and run the web and API apps.
+OpsPilot is an operations-focused copilot. This repository is a
+[Bun](https://bun.sh/) + [Turborepo](https://turborepo.dev/) monorepo with a
+Next.js web app and a NestJS API.
 
-## What's inside
+The current codebase is the engineering foundation: health checks, Prisma
+against hosted Supabase PostgreSQL, and a starter web UI. Product workflows
+are not implemented yet.
 
-| Path                         | Role                                                   |
-| ---------------------------- | ------------------------------------------------------ |
-| `apps/web`                   | [Next.js](https://nextjs.org/) product app (port 3001) |
-| `apps/api`                   | [NestJS](https://nestjs.com/) API (port 3000)          |
-| `packages/ui`                | Shared React component library used by `web`           |
-| `packages/eslint-config`     | Shared ESLint configuration                            |
-| `packages/typescript-config` | Shared TypeScript configuration                        |
+Architecture detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-Each package and app is TypeScript.
+## Repository structure
+
+| Path                         | Role                                              |
+| ---------------------------- | ------------------------------------------------- |
+| `apps/web`                   | Next.js App Router UI (development port **3001**) |
+| `apps/api`                   | NestJS API (port **3000**)                        |
+| `packages/ui`                | Shared React components used by `web`             |
+| `packages/eslint-config`     | Shared ESLint configuration                       |
+| `packages/typescript-config` | Shared TypeScript configuration                   |
+| `docs/ARCHITECTURE.md`       | Current architecture and stack                    |
+| `.github/workflows/ci.yml`   | GitHub Actions CI                                 |
+
+Each app and package is TypeScript. Workspaces are `apps/*` and `packages/*`.
 
 ## Prerequisites
 
-Install these before the first `bun install`:
-
-| Tool                                          | Version                       | Defined in                                 |
-| --------------------------------------------- | ----------------------------- | ------------------------------------------ |
-| [Node.js](https://nodejs.org/)                | 24 or later                   | `package.json` `engines.node`              |
-| [Bun](https://bun.sh/)                        | 1.3.13                        | `package.json` `devEngines.packageManager` |
-| [Docker](https://docs.docker.com/get-docker/) | Compose v2 (`docker compose`) | Optional local PostgreSQL (`compose.yaml`) |
-
-Confirm:
+| Tool                           | Version     | Defined in                                 |
+| ------------------------------ | ----------- | ------------------------------------------ |
+| [Node.js](https://nodejs.org/) | 24 or later | `package.json` `engines.node`              |
+| [Bun](https://bun.sh/)         | 1.3.13      | `package.json` `devEngines.packageManager` |
 
 ```sh
 node --version     # v24.x or later
 bun --version      # 1.3.13
 ```
 
-**PostgreSQL** is the application database. Only the NestJS API connects to
-it. Next.js must not connect to PostgreSQL or Supabase. **Current development
-default is hosted Supabase PostgreSQL.** Local Docker Compose remains in the
-repo for later use but is not required right now. Connection settings use
-discrete `DATABASE_*` variables (host, port, name, user, password, optional
-SSL) — or a single `DATABASE_URL` for Prisma. When `DATABASE_URL` is unset,
-the API derives it from `DATABASE_*`.
+PostgreSQL is hosted **Supabase**. Only the NestJS API connects to it. You do
+not need a local PostgreSQL install or Docker to develop against the current
+default. Docker Compose (`compose.yaml`) exists in the repo as an optional
+local database later; it is not required now.
 
 ## Getting started
 
@@ -52,22 +52,23 @@ cp apps/web/.env.example apps/web/.env.local
 bun run dev
 ```
 
-Fill `DATABASE_*` (or `DATABASE_URL`), `SUPABASE_URL`, and `SUPABASE_ANON_KEY`
-in `apps/api/.env` from the Supabase dashboard (see PostgreSQL below). Do not
-commit that file.
-Do not start Docker Compose for database work right now.
+Put Supabase database values in `apps/api/.env` (see [Environment](#environment)
+and [Database](#database)). Do not commit `.env` or `.env.local`.
 
 - API: [http://localhost:3000](http://localhost:3000)
 - Web: [http://localhost:3001](http://localhost:3001)
 
-`bun run dev` runs each workspace `dev` script through Turborepo. That starts
-the API (`nest start --watch` on port 3000) and the web app
-(`next dev --port 3001`). The API loads `apps/api/.env` at process start
+`bun run dev` runs each workspace `dev` script through Turborepo:
+
+- API: `nest start --watch` on port 3000 (`PORT` overrides this)
+- Web: `next dev --port 3001`
+
+The API loads `apps/api/.env` at process start when that file exists
 (`process.loadEnvFile`). Existing process environment variables are not
 overridden.
 
-The API listens on port 3000 when `PORT` is unset. Unit and E2E tests do not
-require PostgreSQL to pass.
+The API and its unit/E2E tests start without PostgreSQL. `GET /health/ready`
+returns `503` when the database is unreachable or `DATABASE_*` is incomplete.
 
 Run a single app:
 
@@ -78,15 +79,17 @@ bun run dev --filter=web
 
 ## Environment
 
-Application env files are loaded from each app directory, not the repo root.
+Runtime files live next to each app, not at the repo root. **Only committed
+`.env.example` files are documentation.** Copy them locally; never commit the
+copies. Never put real secrets in examples or in git.
 
-| File                    | Purpose                                           | Git       |
-| ----------------------- | ------------------------------------------------- | --------- |
-| `.env.example`          | Workspace convention (this file is comments only) | committed |
-| `apps/api/.env.example` | NestJS server variables                           | committed |
-| `apps/web/.env.example` | Next.js variables                                 | committed |
-| `apps/api/.env`         | Local API secrets / overrides                     | ignored   |
-| `apps/web/.env.local`   | Local web overrides (preferred for Next.js)       | ignored   |
+| File                    | Purpose                                     | Git       |
+| ----------------------- | ------------------------------------------- | --------- |
+| `.env.example`          | Workspace notes (comments only)             | committed |
+| `apps/api/.env.example` | NestJS server variables                     | committed |
+| `apps/web/.env.example` | Next.js variables                           | committed |
+| `apps/api/.env`         | Local API secrets / overrides               | ignored   |
+| `apps/web/.env.local`   | Local web overrides (preferred for Next.js) | ignored   |
 
 **Naming**
 
@@ -94,146 +97,109 @@ Application env files are loaded from each app directory, not the repo root.
 - Put a variable in the app that reads it.
 - **Web, browser-safe:** `NEXT_PUBLIC_*` is inlined into the client bundle.
   Never put secrets here.
-- **Web, server-only:** no `NEXT_PUBLIC_` prefix (Server Components, Route
-  Handlers, `next.config`).
+- **Web, server-only:** no `NEXT_PUBLIC_` prefix.
 - **API:** always server-only. Do not use `NEXT_PUBLIC_*`.
 
-**Currently documented variables**
+**Variables from the example files**
 
-| Variable              | App        | Required                     | Purpose                                                                  | Example                         |
-| --------------------- | ---------- | ---------------------------- | ------------------------------------------------------------------------ | ------------------------------- |
-| `PORT`                | `apps/api` | Optional                     | HTTP listen port. Default `3000`.                                        | `3000`                          |
-| `NODE_ENV`            | all        | Optional                     | Runtime/build environment.                                               | `development`                   |
-| `NEXT_PUBLIC_API_URL` | `apps/web` | Optional                     | Browser-safe API origin. Not read yet.                                   | `http://localhost:3000`         |
-| `DATABASE_URL`        | `apps/api` | Required for Prisma          | PostgreSQL connection URL (Prisma CLI + ORM). Built from `DATABASE_*` when unset. Never in `apps/web`. | `postgresql://USER:PASSWORD@HOST:5432/DB?sslmode=require` |
-| `DATABASE_HOST`       | `apps/api` | Required for `/health/ready` | PostgreSQL host (Supabase). Never in `apps/web`.                         | *(from Supabase dashboard)*     |
-| `DATABASE_PORT`       | `apps/api` | Required for `/health/ready` | PostgreSQL port (often `5432` for direct).                               | `5432`                          |
-| `DATABASE_NAME`       | `apps/api` | Required for `/health/ready` | Database name.                                                           | `postgres`                      |
-| `DATABASE_USER`       | `apps/api` | Required for `/health/ready` | Database role.                                                           | *(from Supabase dashboard)*     |
-| `DATABASE_PASSWORD`   | `apps/api` | Required for `/health/ready` | Database password. Never commit real secrets.                            | *(from Supabase dashboard)*     |
-| `DATABASE_SSL`        | `apps/api` | Recommended for Supabase     | Enable TLS (`true` / `1` / `require`). Default off when unset.           | `true`                          |
-| `SUPABASE_URL`        | `apps/api` | Optional today               | Supabase project URL (Settings → API). Server-only.                      | *(from Supabase dashboard)*     |
-| `SUPABASE_ANON_KEY`   | `apps/api` | Optional today               | Supabase anon/publishable key. Server-only; never in `apps/web`.         | *(from Supabase dashboard)*     |
+Required/optional below is based on `.env.example` plus whether application
+source currently reads the name.
+
+| Variable              | App                  | Required                               | Read by the app today                                           | Purpose                                                       |
+| --------------------- | -------------------- | -------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------- |
+| `PORT`                | `apps/api`           | Optional                               | Yes (`main.ts`). Default `3000`                                 | HTTP listen port                                              |
+| `NODE_ENV`            | examples (commented) | Optional                               | Not read by OpsPilot source; listed in `turbo.json` `globalEnv` | Runtime/build environment                                     |
+| `DATABASE_URL`        | `apps/api`           | For Prisma when not using `DATABASE_*` | Yes (Prisma URL resolution)                                     | PostgreSQL URL for Prisma CLI and the ORM                     |
+| `DATABASE_HOST`       | `apps/api`           | For `/health/ready`                    | Yes (`DatabaseService`)                                         | PostgreSQL host                                               |
+| `DATABASE_PORT`       | `apps/api`           | For `/health/ready`                    | Yes                                                             | PostgreSQL port (often `5432`)                                |
+| `DATABASE_NAME`       | `apps/api`           | For `/health/ready`                    | Yes                                                             | Database name                                                 |
+| `DATABASE_USER`       | `apps/api`           | For `/health/ready`                    | Yes                                                             | Database role                                                 |
+| `DATABASE_PASSWORD`   | `apps/api`           | For `/health/ready`                    | Yes                                                             | Database password                                             |
+| `DATABASE_SSL`        | `apps/api`           | Recommended for Supabase               | Yes (`true` / `1` / `require`)                                  | TLS for `pg` / URL `sslmode=require`                          |
+| `SUPABASE_URL`        | `apps/api`           | Optional                               | **No**                                                          | Documented in `.env.example` only                             |
+| `SUPABASE_ANON_KEY`   | `apps/api`           | Optional                               | **No**                                                          | Documented in `.env.example` only                             |
+| `NEXT_PUBLIC_API_URL` | `apps/web`           | Optional                               | **No**                                                          | Example API origin for when the client starts calling the API |
+
+`DATABASE_*` and `DATABASE_URL` belong only in `apps/api`. Never add them to
+`apps/web`.
+
+When `DATABASE_URL` is unset or empty, Prisma builds a URL from `DATABASE_*`.
+`/health/ready` still uses the discrete `DATABASE_*` variables only; setting
+`DATABASE_URL` alone does not configure that health check.
+
+Root `.env.example` also comments optional Compose variables (`POSTGRES_DB`,
+`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`) for `compose.yaml`.
+Those are not API connection settings.
 
 **Secrets**
 
-- Never commit `.env`, `.env.local`, `.env.*.local`, credentials, API keys,
-  or tokens.
+- Never commit `.env`, `.env.local`, `.env.*.local`, passwords, or API keys.
 - Never expose secrets through `NEXT_PUBLIC_*`.
-- Keep API secrets in `apps/api` only.
+- Keep database and Supabase values in `apps/api` only.
 - If a secret is committed by mistake, rotate it.
 
-### PostgreSQL
+## Database
 
-Only `apps/api` connects to PostgreSQL. **Prisma** is the ORM; the database is
-hosted **Supabase PostgreSQL**. Connection settings use `DATABASE_URL` (preferred
-for Prisma) or discrete `DATABASE_*` variables (host, port, name, user, password,
-optional SSL). The API builds `DATABASE_URL` from `DATABASE_*` when the URL is
-unset. Next.js must not connect to PostgreSQL or Supabase.
-
-**Current path: hosted Supabase (recommended now)**
-
-Local Docker PostgreSQL is **not** used for day-to-day development right now.
-Point the API at your Supabase project instead.
+The NestJS API uses [Prisma](https://www.prisma.io/) against **hosted Supabase
+PostgreSQL**. Next.js must not connect to PostgreSQL or Supabase.
 
 1. In the Supabase dashboard, open **Settings → Database**.
 2. Copy host, port, database name, user, and password. Prefer a **direct** or
-   **session-mode** connection for this long-lived Nest process (`pg` already
-   pools on the client).
+   **session-mode** connection for this long-lived Nest process.
 3. Put those values in `apps/api/.env` as `DATABASE_HOST`, `DATABASE_PORT`,
-   `DATABASE_NAME`, `DATABASE_USER`, and `DATABASE_PASSWORD` — or set
-   `DATABASE_URL` directly (see `apps/api/.env.example`).
-4. Set `DATABASE_SSL=true` (required for Supabase TLS).
-5. Optionally set `SUPABASE_URL` and `SUPABASE_ANON_KEY` from **Settings → API**.
-6. Never commit Supabase credentials. Never add them to `apps/web`.
+   `DATABASE_NAME`, `DATABASE_USER`, and `DATABASE_PASSWORD`, or set
+   `DATABASE_URL` (see `apps/api/.env.example` for the URL shape).
+4. Set `DATABASE_SSL=true`.
+5. Never commit credentials.
 
-| Concern              | Hosted Supabase (current)                                    | Local Docker Compose (optional later)                         |
-| -------------------- | ------------------------------------------------------------ | ------------------------------------------------------------- |
-| How you run Postgres | Managed by Supabase; no local container                      | `docker compose up -d` from the repo root                     |
-| Where config lives   | `DATABASE_URL` and/or `DATABASE_*` in `apps/api/.env` from the dashboard | Same keys with local Compose defaults                         |
-| TLS                  | `DATABASE_SSL=true`                                         | Usually unset / `false`                                       |
-| Who connects         | NestJS API only                                              | NestJS API only — never `apps/web`                            |
+| Path                             | Purpose                                              |
+| -------------------------------- | ---------------------------------------------------- |
+| `apps/api/prisma/schema.prisma`  | Prisma schema (no product tables yet)                |
+| `apps/api/prisma/migrations/`    | Committed SQL migrations                             |
+| `apps/api/prisma.config.ts`      | Prisma CLI configuration                             |
+| `apps/api/src/generated/prisma/` | Generated client (gitignored; run `prisma:generate`) |
 
-**Verify connectivity**
-
-After configuring `apps/api/.env` and `bun run dev --filter=api`:
-
-- [http://localhost:3000/health](http://localhost:3000/health) — process
-  liveness (`{"status":"ok"}`)
-- [http://localhost:3000/health/ready](http://localhost:3000/health/ready)
-  — `200` when `SELECT 1` succeeds, `503` when PostgreSQL is unreachable or
-  any required `DATABASE_*` variable is missing. Responses do not include
-  credentials.
-
-### Prisma ORM and migrations
-
-The NestJS API uses [Prisma](https://www.prisma.io/) as the ORM against
-Supabase PostgreSQL. Schema and migrations live in `apps/api`:
-
-| Path | Purpose |
-| ---- | ------- |
-| `apps/api/prisma/schema.prisma` | Prisma schema (no product tables yet) |
-| `apps/api/prisma/migrations/` | Committed SQL migrations |
-| `apps/api/prisma.config.ts` | Prisma CLI configuration (connection URL) |
-| `apps/api/src/generated/prisma/` | Generated Prisma Client (gitignored; run `prisma:generate`) |
-
-**Environment:** set `DATABASE_URL` in `apps/api/.env`, or keep using
-`DATABASE_*` — `prisma.config.ts` and the API derive the URL automatically.
-Never commit real credentials. Never add database variables to `apps/web`.
-
-**Prerequisites:** a Supabase development database with network access from
-your machine. No local PostgreSQL or Docker is required.
-
-From `apps/api` (or the repo root via `bun run --filter=api …`):
+From `apps/api` (or `bun run --filter=api <script>` from the root):
 
 ```sh
-bun run prisma:generate          # generate Prisma Client (also runs before build/check-types)
-bun run prisma:migrate           # create/apply a development migration from schema changes
-bun run prisma:migrate:deploy    # apply pending migrations (e.g. staging/production)
-bun run prisma:migrate:status    # inspect migration history vs the database
+bun run prisma:generate          # generate Prisma Client (also runs before build / check-types)
+bun run prisma:migrate           # create and apply a development migration
+bun run prisma:migrate:deploy    # apply pending migrations
+bun run prisma:migrate:status    # compare migration history to the database
 ```
 
 To reproduce the schema on a clean database, apply committed migrations with
 `prisma:migrate:deploy`. Do **not** run `prisma migrate reset` against the
 shared Supabase development database.
 
-`PrismaService` (`apps/api/src/database/prisma.service.ts`) connects during
-NestJS startup and disconnects on shutdown. `/health/ready` still uses the
-existing `pg` pool via `DatabaseService`; domain repositories are not added
-yet.
+After `bun run dev --filter=api`:
 
-See **[apps/api/docs/PRISMA.md](apps/api/docs/PRISMA.md)** for a full Prisma agent guide and usage reference.
+- [http://localhost:3000/health](http://localhost:3000/health) — liveness
+  (`{"status":"ok"}`)
+- [http://localhost:3000/health/ready](http://localhost:3000/health/ready) —
+  `200` when `SELECT 1` succeeds, `503` otherwise
 
-**Optional later: local Docker PostgreSQL**
+Full Prisma workflow: [apps/api/docs/PRISMA.md](apps/api/docs/PRISMA.md).
 
-Compose config remains in `compose.yaml` for when you want a local database
-again. It is not part of the current default workflow.
-
-```sh
-docker compose up -d          # start PostgreSQL 16 (or bun run db:up)
-docker compose ps             # status (or bun run db:status)
-docker compose down           # stop; keeps the named volume (or bun run db:down)
-docker compose down -v        # stop and delete local data
-```
-
-If you switch back, use local defaults in `apps/api/.env` (`localhost` /
-`opspilot`) and set `DATABASE_SSL=false` or omit it. If host port 5432 is
-already taken, set `POSTGRES_PORT` in a gitignored root `.env` and match
-`DATABASE_PORT` in `apps/api/.env`.
+`compose.yaml` and `bun run db:up` / `db:down` / `db:status` wrap an optional
+local PostgreSQL 16 container. That is not the current default workflow.
 
 ## Quality checks
 
 From the repository root:
 
 ```sh
-bun run lint          # ESLint / oxlint via Turborepo
-bun run check-types   # TypeScript checks via Turborepo
+bun run lint          # turbo: oxlint (api), ESLint (web, ui)
+bun run check-types   # turbo: TypeScript checks (api generates Prisma Client first)
 bun run format        # Prettier write
 bun run format:check  # Prettier check
-bun run build         # Production build via Turborepo
+bun run build         # turbo: production build
 ```
 
-To reproduce CI's frozen install:
+CI does not run Prettier. `bun run format:check` scans the whole tree,
+including `.agents/` skill markdown.
+
+CI-style install:
 
 ```sh
 bun install --frozen-lockfile
@@ -241,41 +207,41 @@ bun install --frozen-lockfile
 
 ## Testing
 
-The API uses [Vitest](https://vitest.dev/). The web app does not have a test
-suite yet; do not add placeholder web tests.
+The API uses [Vitest](https://vitest.dev/). The web app has no test suite.
 
-Run API tests from `apps/api` (CI does the same):
+Root scripts run Turbo across workspaces that define the task (today that is
+only `apps/api`):
+
+```sh
+bun run test          # turbo → apps/api `vitest run`
+bun run test:e2e      # turbo → apps/api E2E config
+```
+
+Same checks from `apps/api` (this is what CI runs):
 
 ```sh
 cd apps/api
-bun run test        # unit tests
-bun run test:watch  # unit tests in watch mode
-bun run test:cov    # unit tests with coverage
-bun run test:e2e    # E2E tests
+bun run test          # unit tests (`src/**/*.spec.ts`)
+bun run test:watch    # unit tests in watch mode
+bun run test:cov      # unit tests with coverage
+bun run test:e2e      # E2E tests (`test/**/*.e2e-spec.ts`)
 ```
 
-No extra secrets are required. GitHub Actions CI does not start PostgreSQL.
-Unit and E2E tests still pass without a database. `/health/ready` returns
-503 when PostgreSQL is unavailable.
-
-**Conventions (API)**
-
-| Kind        | Location                            | Naming          |
-| ----------- | ----------------------------------- | --------------- |
-| Unit        | Colocated in `src/`                 | `*.spec.ts`     |
-| Integration | `test/integration/` when introduced | `*.spec.ts`     |
-| E2E         | `test/`                             | `*.e2e-spec.ts` |
+No extra secrets are required. GitHub Actions does not start PostgreSQL. Unit
+and E2E tests pass without a database. They do need a generated Prisma Client
+(`apps/api/src/generated/`, gitignored). CI produces it during `check-types`
+before tests. After a fresh clone, run `bun run check-types` or
+`bun run --filter=api prisma:generate` first.
 
 ## Continuous integration
 
 GitHub Actions runs on every pull request and on every push to `main`. The
-workflow is [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+only workflow in this repository is
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
-CI uses Node.js 24 (`engines.node`) and Bun 1.3.13
-(`devEngines.packageManager`). Dependencies are installed with
-`bun install --frozen-lockfile`. Turborepo remote caching is not enabled.
-
-**What CI validates**
+CI uses Node.js **24** and Bun **1.3.13**. Dependencies are installed with
+`bun install --frozen-lockfile`. Turborepo remote caching is not configured.
+`TURBO_TELEMETRY_DISABLED` is set to `1`.
 
 | Check            | Command                           |
 | ---------------- | --------------------------------- |
@@ -285,183 +251,64 @@ CI uses Node.js 24 (`engines.node`) and Bun 1.3.13
 | E2E tests        | `cd apps/api && bun run test:e2e` |
 | Production build | `bun run build`                   |
 
-CI does not copy `.env` files, does not start PostgreSQL, does not use
-production secrets, and does not deploy. Example files under
-`.env.example` are documentation only. Unit and E2E tests do not require a
-running database.
+CI does not copy `.env` files, does not start PostgreSQL, does not run
+Prettier, does not apply Prisma migrations, and does not deploy.
 
-**Reproduce CI locally**
+Reproduce CI locally:
 
 ```sh
 bun install --frozen-lockfile
 bun run lint
 bun run check-types
-bun run build
 cd apps/api && bun run test && bun run test:e2e
+bun run build
 ```
-
-**Pull request review**
-
-OpenRabbit runs on non-draft pull requests via
-[`.github/workflows/reviewer.yml`](.github/workflows/reviewer.yml) (`pull_request`
-for same-repo PRs, `pull_request_target` for forks). It posts a summary and
-inline comments using Gemini through Google's OpenAI-compatible API.
-
-**Required secret**
-
-1. Go to **Settings → Secrets and variables → Actions → Secrets**.
-2. Create `LLM_API_KEY` with your Google AI Studio API key value.
-
-**Optional model variable**
-
-1. Go to **Settings → Secrets and variables → Actions → Variables**.
-2. Create `OPENRABBIT_LLM_MODEL`.
-3. Paste **one** model id from the lists below (exact string, no quotes).
-
-If `OPENRABBIT_LLM_MODEL` is unset, the workflow defaults to `gemini-3.7-flash`.
-
-Google AI Pro / Ultra consumer plans are not separate API model names. Paid API
-billing mainly affects quotas; you still paste one of the ids below.
-
-**Free / Flash (copy one)**
-
-```text
-gemini-3.7-flash
-```
-
-```text
-gemini-3.6-flash
-```
-
-```text
-gemini-3.5-flash
-```
-
-```text
-gemini-3-flash-preview
-```
-
-```text
-gemini-2.5-flash
-```
-
-```text
-gemini-3.1-flash-lite
-```
-
-```text
-gemini-3.5-flash-lite
-```
-
-```text
-gemini-2.5-flash-lite
-```
-
-```text
-gemini-flash-latest
-```
-
-```text
-gemini-flash-lite-latest
-```
-
-**Pro (copy one)**
-
-```text
-gemini-3.1-pro-preview
-```
-
-```text
-gemini-3.1-pro-preview-customtools
-```
-
-```text
-gemini-2.5-pro
-```
-
-```text
-gemini-pro-latest
-```
-
-Image-only models (`gemini-3-pro-image`, `gemini-3.1-flash-image`, and similar)
-are not recommended for PR review. If a model returns 404 or 503, switch
-`OPENRABBIT_LLM_MODEL` to another id from these lists.
-
-When Gemini returns high demand / 503 / 429, the workflow posts a warning
-comment on the PR and **does not fail** the GitHub check. Other errors (missing
-or invalid `LLM_API_KEY`, bad config) still fail the job.
-
 
 ## Troubleshooting
 
 ### Incorrect Bun or Node.js version
-
-Symptoms: install failures, `engines` warnings, Next.js or Nest CLI errors,
-or behavior that differs from CI.
 
 ```sh
 node --version   # need v24+
 bun --version    # need 1.3.13
 ```
 
-Install Node.js 24 from [nodejs.org](https://nodejs.org/) or a version
-manager (`nvm`, `fnm`). Install Bun 1.3.13 from [bun.sh](https://bun.sh/).
-
 ### Missing environment files
-
-Symptoms: missing local overrides, or confusion about which file to edit.
 
 ```sh
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env.local
 ```
 
-The apps start without these files today. Copy them so local overrides have
-a place to live. Never commit the copied files.
+The apps start without these files today. Copy them so local overrides have a
+place to live. Never commit the copied files.
 
 ### Dependency installation problems
 
-Symptoms: missing packages, lockfile errors, or a broken `node_modules`.
-
-- Run installs from the **repository root**, not from an app directory.
+- Run installs from the **repository root**.
 - Use `bun install`. The lockfile is `bun.lock`.
 - `bun install --frozen-lockfile` fails if `package.json` and `bun.lock`
-  disagree. If you changed dependencies, run `bun install` and commit the
+  disagree. After changing dependencies, run `bun install` and commit the
   updated lockfile.
-- To reset: remove `node_modules` (and workspace `node_modules` if present)
-  and run `bun install` again from the root.
 
 ### Ports already in use
 
-| App        | Default port | Configured by                                 |
-| ---------- | ------------ | --------------------------------------------- |
-| API        | 3000         | `PORT` in `apps/api/.env`, otherwise `3000`   |
-| Web        | 3001         | `apps/web` `next dev --port 3001`             |
-| PostgreSQL | 5432         | `POSTGRES_PORT` (Compose, bound to 127.0.0.1) |
-
-If `bun run dev` fails because a port is taken, stop the other process or
-set `PORT` in `apps/api/.env`. The web port is set in
-`apps/web/package.json`; keep it away from 3000 so it does not collide with
-the API.
+| App                                 | Default port | Configured by                               |
+| ----------------------------------- | ------------ | ------------------------------------------- |
+| API (dev and default listen)        | 3000         | `PORT` in `apps/api/.env`, otherwise `3000` |
+| Web (dev)                           | 3001         | `apps/web` script `next dev --port 3001`    |
+| Web (`bun run start` in `apps/web`) | 3000         | Next.js default unless you pass a port      |
 
 ### PostgreSQL is not reachable
 
-Symptoms: `/health/ready` returns `503` with
-`{"status":"not_ready","database":"unavailable"}`. Logs may mention a ping
-failure; they must not print the password.
+`/health/ready` returns `503` with
+`{"status":"not_ready","database":"unavailable"}`. Confirm `apps/api/.env`
+has Supabase `DATABASE_*` values and `DATABASE_SSL=true`. Do not commit those
+values.
 
-Confirm `apps/api/.env` has Supabase `DATABASE_HOST`, `DATABASE_PORT`,
-`DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, and `DATABASE_SSL=true`
-(see `apps/api/.env.example`). Values must come from the dashboard and must
-not be committed.
+## Related documentation
 
-Local Docker is optional and unused in the current workflow. If you enable it
-later and port 5432 is already in use, set `POSTGRES_PORT` in a root `.env`
-and match `DATABASE_PORT` in `apps/api/.env`.
-
-## Useful links
-
-- [Turborepo tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Turborepo filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [NestJS](https://docs.nestjs.com)
-- [Next.js](https://nextjs.org/docs)
+- [Architecture](docs/ARCHITECTURE.md)
+- [API](apps/api/README.md)
+- [Web](apps/web/README.md)
+- [Prisma](apps/api/docs/PRISMA.md)
