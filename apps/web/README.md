@@ -1,8 +1,25 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/create-next-app).
+# OpsPilot web
 
-## Getting Started
+Next.js App Router UI for OpsPilot (`apps/web`). Package name: `web`.
 
-The repository root README is the local development guide (prerequisites, env files, troubleshooting). From the root:
+The root [README](../../README.md) covers prerequisites, env files, and
+monorepo commands. Architecture: [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md).
+
+## Role in the monorepo
+
+- Depends on `@repo/ui` for shared React components.
+- Lints with `@repo/eslint-config/next-js`.
+- Extends `@repo/typescript-config/nextjs.json`.
+- Does **not** connect to PostgreSQL or Supabase. Database variables belong
+  only in `apps/api`.
+- Does **not** call the API yet. `NEXT_PUBLIC_API_URL` is documented in
+  `.env.example` and is not read by source.
+
+Current UI is the Turborepo starter page in `app/page.tsx`.
+
+## Run
+
+From the repository root:
 
 ```bash
 bun install
@@ -10,27 +27,41 @@ cp apps/web/.env.example apps/web/.env.local
 bun run dev --filter=web
 ```
 
-`bun run dev` from the root starts web and API together. Or from this directory after a root install: `bun run dev`.
+`bun run dev` from the root starts **web and API** together. From this
+directory after a root install:
 
-Open [http://localhost:3001](http://localhost:3001) (the app is configured on port 3001 so it does not collide with the API on 3000).
+```bash
+bun run dev
+```
 
-No environment variables are required to render the UI. Copy `.env.example` to `.env.local` for local overrides. Variables prefixed with `NEXT_PUBLIC_` are exposed to the browser; never put secrets in them. PostgreSQL and `DATABASE_*` belong only in `apps/api`. The web app must not connect to PostgreSQL or Supabase.
+Open [http://localhost:3001](http://localhost:3001). Development is pinned to
+port **3001** so it does not collide with the API on 3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+No environment variables are required to render the UI. Copy `.env.example` to
+`.env.local` for local overrides. `NEXT_PUBLIC_*` values are exposed to the
+browser; never put secrets in them.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load Inter, a custom Google Font.
+## Scripts
 
-## Learn More
+| Script        | Command                        | Notes                                                                                                                 |
+| ------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `dev`         | `next dev --port 3001`         | Hot reload on 3001                                                                                                    |
+| `build`       | `next build`                   | Production build                                                                                                      |
+| `start`       | `next start`                   | Serves the production build. Next.js defaults to port **3000** unless you pass a port — that can collide with the API |
+| `lint`        | `eslint --max-warnings 0`      | Shared Next.js ESLint config                                                                                          |
+| `check-types` | `next typegen && tsc --noEmit` | Typecheck                                                                                                             |
 
-To learn more about Next.js, take a look at the following resources:
+From the repo root, `bun run lint`, `bun run check-types`, `bun run build`,
+and `bun run dev` include this workspace via Turborepo.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+There is no `test` or `test:e2e` script in this package.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Layout
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```text
+apps/web/app/
+  layout.tsx       root layout (local Geist fonts via next/font/local)
+  page.tsx         home page
+  globals.css
+  page.module.css
+```
