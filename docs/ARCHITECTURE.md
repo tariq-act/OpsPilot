@@ -72,13 +72,19 @@ Entry point: `apps/api/src/main.ts`. If `apps/api/.env` exists, it is loaded
 with `process.loadEnvFile` before the app starts. Existing process environment
 variables are not overridden. The HTTP port is `process.env.PORT` or `3000`.
 
-Root module: `AppModule` (`apps/api/src/app.module.ts`).
+Root module: `AppModule` (`apps/api/src/app.module.ts`). It is the composition
+root: it registers `GET /` and imports `HealthModule`. Product domain modules
+are not present; they will be imported here when added.
 
 | Module / file                  | Responsibility                               |
 | ------------------------------ | -------------------------------------------- |
 | `AppController` / `AppService` | `GET /` returns `Hello World!`               |
 | `HealthModule`                 | `GET /health`, `GET /health/ready`           |
-| `DatabaseModule` (global)      | `DatabaseService` (`pg`) and `PrismaService` |
+| `DatabaseModule`               | `DatabaseService` (`pg`) and `PrismaService` |
+
+`DatabaseModule` is not global. `HealthModule` imports it to ping PostgreSQL.
+`AppModule` does not import `DatabaseModule`. Feature modules import
+`DatabaseModule` only when they need persistence.
 
 `GET /health` is process liveness and does not touch the database.
 

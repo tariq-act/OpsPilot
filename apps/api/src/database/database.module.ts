@@ -1,8 +1,8 @@
-import { Global, Module } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { DatabaseService } from "./database.service.js";
 import { PrismaService } from "./prisma.service.js";
 
-@Global()
+/** Persistence infrastructure. Import this module to use DatabaseService or PrismaService. */
 @Module({
   providers: [DatabaseService, PrismaService],
   exports: [DatabaseService, PrismaService],
