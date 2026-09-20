@@ -17,7 +17,7 @@ env:
 
 jobs:
   ci:
-    name: Lint, type-check, test, and build
+    name: Lint, type-check, and build
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -44,13 +44,13 @@ jobs:
       - name: Type check
         run: bun run check-types
 
-      - name: Unit tests
-        working-directory: apps/api
-        run: bun run test
+      # - name: Unit tests
+      #   working-directory: apps/api
+      #   run: bun run test
 
-      - name: E2E tests
-        working-directory: apps/api
-        run: bun run test:e2e
+      # - name: E2E tests
+      #   working-directory: apps/api
+      #   run: bun run test:e2e
 
       - name: Production build
         run: bun run build

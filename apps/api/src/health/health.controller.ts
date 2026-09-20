@@ -1,26 +1,27 @@
-import { Controller, Get, HttpStatus, Res } from "@nestjs/common";
-import type { Response } from "express";
-import { DatabaseService } from "../database/database.service.js";
+import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
+import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
+import { sql } from 'drizzle-orm';
+import { db } from '../db/index.js';
 
-@Controller("health")
+@Controller('health')
 export class HealthController {
-  constructor(private readonly database: DatabaseService) {}
-
   @Get()
-  liveness(): { status: "ok" } {
-    return { status: "ok" };
+  @AllowAnonymous()
+  getLiveness() {
+    return { status: 'ok' };
   }
 
-  @Get("ready")
-  async readiness(
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<{ status: "ready" | "not_ready"; database: string }> {
-    const connected = await this.database.ping();
-    if (!connected) {
-      response.status(HttpStatus.SERVICE_UNAVAILABLE);
-      return { status: "not_ready", database: "unavailable" };
+  @Get('ready')
+  @AllowAnonymous()
+  async getReadiness() {
+    try {
+      await db.execute(sql`SELECT 1`);
+      return { status: 'ready', database: 'connected' };
+    } catch {
+      throw new ServiceUnavailableException({
+        status: 'not_ready',
+        database: 'unavailable',
+      });
     }
-
-    return { status: "ready", database: "connected" };
   }
 }

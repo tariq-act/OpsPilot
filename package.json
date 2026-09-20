@@ -15,6 +15,7 @@
     "db:status": "docker compose ps"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "prettier": "3.9.6",
     "turbo": "^2.10.12",
     "typescript": "6.0.3"
@@ -31,5 +32,9 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "dependencies": {
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1"
+  }
 }
