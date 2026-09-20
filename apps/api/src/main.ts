@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { resolveWebOrigin } from './lib/web-origin.js';
@@ -16,6 +17,15 @@ async function bootstrap() {
     // @thallesp/nestjs-better-auth re-adds parsers for non-auth routes.
     bodyParser: false,
   });
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: { enableImplicitConversion: false },
+    }),
+  );
 
   app.enableCors({
     origin: resolveWebOrigin(),
