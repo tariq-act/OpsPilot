@@ -4,15 +4,17 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService as BetterAuthService } from '@thallesp/nestjs-better-auth';
 import { APIError, isAPIError } from 'better-auth/api';
 import { fromNodeHeaders } from 'better-auth/node';
 import type { Request, Response } from 'express';
 import type { auth } from '../lib/auth.js';
+import type { LoginDto } from './dto/login.dto.js';
 import type { SignUpDto } from './dto/signup.dto.js';
 
-export type SignUpUser = {
+export type AuthUser = {
   id: string;
   name: string;
   email: string;
@@ -22,8 +24,8 @@ export type SignUpUser = {
   updatedAt: Date;
 };
 
-export type SignUpResult = {
-  user: SignUpUser;
+export type AuthResult = {
+  user: AuthUser;
 };
 
 const DUPLICATE_EMAIL_CODES = new Set([
@@ -38,6 +40,10 @@ const CLIENT_VALIDATION_CODES = new Set([
   'PASSWORD_TOO_LONG',
 ]);
 
+const INVALID_CREDENTIALS_CODES = new Set(['INVALID_EMAIL_OR_PASSWORD']);
+
+type AuthAction = 'signup' | 'login';
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -50,7 +56,7 @@ export class AuthService {
     dto: SignUpDto,
     req: Request,
     res: Response,
-  ): Promise<SignUpResult> {
+  ): Promise<AuthResult> {
     try {
       const { headers, response } = await this.betterAuth.api.signUpEmail({
         body: {
@@ -63,21 +69,52 @@ export class AuthService {
       });
 
       this.applyAuthCookies(res, headers);
-
-      return {
-        user: {
-          id: response.user.id,
-          name: response.user.name,
-          email: response.user.email,
-          emailVerified: response.user.emailVerified,
-          image: response.user.image ?? null,
-          createdAt: response.user.createdAt,
-          updatedAt: response.user.updatedAt,
-        },
-      };
+      return { user: this.toAuthUser(response.user) };
     } catch (error) {
-      this.rethrowAsHttpException(error);
+      this.rethrowAsHttpException(error, 'signup');
     }
+  }
+
+  async login(
+    dto: LoginDto,
+    req: Request,
+    res: Response,
+  ): Promise<AuthResult> {
+    try {
+      const { headers, response } = await this.betterAuth.api.signInEmail({
+        body: {
+          email: dto.email,
+          password: dto.password,
+        },
+        headers: fromNodeHeaders(req.headers),
+        returnHeaders: true,
+      });
+
+      this.applyAuthCookies(res, headers);
+      return { user: this.toAuthUser(response.user) };
+    } catch (error) {
+      this.rethrowAsHttpException(error, 'login');
+    }
+  }
+
+  private toAuthUser(user: {
+    id: string;
+    name: string;
+    email: string;
+    emailVerified: boolean;
+    image?: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }): AuthUser {
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      emailVerified: user.emailVerified,
+      image: user.image ?? null,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   }
 
   private applyAuthCookies(res: Response, headers: Headers): void {
@@ -97,15 +134,27 @@ export class AuthService {
     }
   }
 
-  private rethrowAsHttpException(error: unknown): never {
+  private rethrowAsHttpException(error: unknown, action: AuthAction): never {
     if (isAPIError(error)) {
       const code = this.getErrorCode(error);
 
-      if (code && DUPLICATE_EMAIL_CODES.has(code)) {
+      if (action === 'signup' && code && DUPLICATE_EMAIL_CODES.has(code)) {
         throw new ConflictException({
           statusCode: 409,
           message: 'Email already registered',
           error: 'Conflict',
+        });
+      }
+
+      if (
+        action === 'login' &&
+        (error.statusCode === 401 ||
+          (code && INVALID_CREDENTIALS_CODES.has(code)))
+      ) {
+        throw new UnauthorizedException({
+          statusCode: 401,
+          message: 'Invalid email or password',
+          error: 'Unauthorized',
         });
       }
 
@@ -115,25 +164,29 @@ export class AuthService {
       ) {
         throw new BadRequestException({
           statusCode: 400,
-          message: this.safeClientMessage(error, code),
+          message: this.safeClientMessage(code, action),
           error: 'Bad Request',
         });
       }
 
       this.logger.error(
-        `Better Auth signup failed (${error.statusCode}${code ? ` ${code}` : ''})`,
+        `Better Auth ${action} failed (${error.statusCode}${code ? ` ${code}` : ''})`,
       );
       throw new InternalServerErrorException({
         statusCode: 500,
-        message: 'Unable to create account',
+        message:
+          action === 'signup'
+            ? 'Unable to create account'
+            : 'Unable to sign in',
         error: 'Internal Server Error',
       });
     }
 
-    this.logger.error('Unexpected signup failure');
+    this.logger.error(`Unexpected ${action} failure`);
     throw new InternalServerErrorException({
       statusCode: 500,
-      message: 'Unable to create account',
+      message:
+        action === 'signup' ? 'Unable to create account' : 'Unable to sign in',
       error: 'Internal Server Error',
     });
   }
@@ -147,17 +200,26 @@ export class AuthService {
     return undefined;
   }
 
-  private safeClientMessage(_error: APIError, code: string | undefined): string {
+  private safeClientMessage(
+    code: string | undefined,
+    action: AuthAction,
+  ): string {
     switch (code) {
       case 'INVALID_EMAIL':
         return 'Email must be a valid email address';
       case 'INVALID_PASSWORD':
       case 'PASSWORD_TOO_SHORT':
-        return 'Password does not meet security requirements';
+        return action === 'signup'
+          ? 'Password does not meet security requirements'
+          : 'Invalid email or password';
       case 'PASSWORD_TOO_LONG':
-        return 'Password is too long';
+        return action === 'signup'
+          ? 'Password is too long'
+          : 'Invalid email or password';
       default:
-        return 'Invalid signup request';
+        return action === 'signup'
+          ? 'Invalid signup request'
+          : 'Invalid login request';
     }
   }
 }
