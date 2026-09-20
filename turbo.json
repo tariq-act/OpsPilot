@@ -9,7 +9,11 @@
     "DATABASE_NAME",
     "DATABASE_USER",
     "DATABASE_PASSWORD",
-    "DATABASE_SSL"
+    "DATABASE_SSL",
+    "BETTER_AUTH_SECRET",
+    "BETTER_AUTH_URL",
+    "WEB_ORIGIN",
+    "NEXT_PUBLIC_API_URL"
   ],
   "tasks": {
     "build": {

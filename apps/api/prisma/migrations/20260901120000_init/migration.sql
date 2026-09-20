@@ -1,1 +1,0 @@
--- OpsPilot initial migration: Prisma schema foundation (no application tables yet).
