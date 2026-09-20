@@ -26,7 +26,7 @@ export const organizationMemberStatusEnum = pgEnum(
   ['ACTIVE', 'INVITED', 'SUSPENDED'],
 );
 
-export const organization = pgTable('organization', {
+export const organization = pgTable.withRLS('organization', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
@@ -41,9 +41,9 @@ export const organization = pgTable('organization', {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
-}).enableRLS();
+});
 
-export const organizationMember = pgTable(
+export const organizationMember = pgTable.withRLS(
   'organization_member',
   {
     id: text('id').primaryKey(),
@@ -69,7 +69,7 @@ export const organizationMember = pgTable(
     index('organization_member_organizationId_idx').on(table.organizationId),
     index('organization_member_userId_idx').on(table.userId),
   ],
-).enableRLS();
+);
 
 export type Organization = typeof organization.$inferSelect;
 export type OrganizationMember = typeof organizationMember.$inferSelect;

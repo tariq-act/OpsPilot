@@ -11,7 +11,7 @@ export const customerStatusEnum = pgEnum('customer_status', [
   'INACTIVE',
 ]);
 
-export const customer = pgTable(
+export const customer = pgTable.withRLS(
   'customer',
   {
     id: text('id').primaryKey(),
@@ -38,7 +38,7 @@ export const customer = pgTable(
     index('customer_phone_idx').on(table.phone),
     index('customer_email_idx').on(table.email),
   ],
-).enableRLS();
+);
 
 export type Customer = typeof customer.$inferSelect;
 export type CustomerStatus = (typeof customerStatusEnum.enumValues)[number];
