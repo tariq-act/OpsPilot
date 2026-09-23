@@ -5,7 +5,7 @@ import {
   AUTH_PASSWORD_MIN_LENGTH,
 } from '../auth/auth.constants.js';
 import { db } from '../db/index.js';
-import * as schema from '../db/schema.js';
+import * as schema from '../db/schema/index.js';
 import { resolveWebOrigin } from './web-origin.js';
 
 export const auth = betterAuth({

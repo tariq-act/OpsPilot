@@ -9,3 +9,5 @@ if (!databaseUrl) {
 
 export const sqlClient = postgres(databaseUrl);
 export const db = drizzle({ client: sqlClient });
+
+export * as schema from './schema/index.js';
