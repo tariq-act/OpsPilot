@@ -10,3 +10,21 @@ export type {
   CreateOwnerMembershipInput,
   OrganizationWithMembership,
 } from './organizations.js';
+export {
+  INVITABLE_ROLES,
+  MANAGER_ROLES,
+  acceptInvitation,
+  createInvitation,
+  deleteMemberInOrganization,
+  findActiveMembership,
+  findInvitationByToken,
+  findMemberInOrganization,
+  findMembershipByOrgUser,
+  findPendingInvitationByOrgEmail,
+  isInvitableRole,
+  isManagerRole,
+  listMembersForOrganization,
+  markInvitationExpired,
+  updateMemberInOrganization,
+} from './members.js';
+export type { InvitableRole, MemberWithUser } from './members.js';
