@@ -1,15 +1,37 @@
 import {
+  BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
+import {
+  acceptInvitation,
+  createInvitation,
+  deleteMemberInOrganization,
+  findActiveMembership,
+  findInvitationByToken,
+  findMemberInOrganization,
+  findMembershipByOrgUser,
+  findPendingInvitationByOrgEmail,
+  isManagerRole,
+  listMembersForOrganization,
+  markInvitationExpired,
+  updateMemberInOrganization,
+  type InvitableRole,
+} from '../db/queries/members.js';
 import {
   createOrganizationWithOwner,
   listOrganizationsForUser,
 } from '../db/queries/organizations.js';
+import type { CreateInvitationDto } from './dto/create-invitation.dto.js';
 import type { CreateOrganizationDto } from './dto/create-organization.dto.js';
+import type { UpdateMemberDto } from './dto/update-member.dto.js';
+
+const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function isUniqueViolation(error: unknown): boolean {
   return (
@@ -20,29 +42,15 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
-function uniqueViolationTarget(error: unknown): 'slug' | 'membership' | 'unknown' {
-  if (typeof error !== 'object' || error === null) {
-    return 'unknown';
+function uniqueConstraintName(error: unknown): string {
+  if (typeof error !== 'object' || error === null) return '';
+  if ('constraint_name' in error) {
+    return String((error as { constraint_name?: unknown }).constraint_name ?? '');
   }
-
-  const constraint =
-    'constraint_name' in error
-      ? String((error as { constraint_name?: unknown }).constraint_name ?? '')
-      : 'constraint' in error
-        ? String((error as { constraint?: unknown }).constraint ?? '')
-        : '';
-
-  if (constraint.includes('slug') || constraint.includes('organization_slug')) {
-    return 'slug';
+  if ('constraint' in error) {
+    return String((error as { constraint?: unknown }).constraint ?? '');
   }
-  if (constraint.includes('organization_member_org_user')) {
-    return 'membership';
-  }
-  // Postgres unique on organization.slug is often named organization_slug_key
-  if (constraint.includes('organization') && constraint.includes('slug')) {
-    return 'slug';
-  }
-  return 'unknown';
+  return '';
 }
 
 @Injectable()
@@ -78,8 +86,8 @@ export class OrganizationsService {
       };
     } catch (error) {
       if (isUniqueViolation(error)) {
-        const target = uniqueViolationTarget(error);
-        if (target === 'membership') {
+        const constraint = uniqueConstraintName(error);
+        if (constraint.includes('organization_member_org_user')) {
           throw new ConflictException({
             statusCode: 409,
             message: 'You are already a member of this organization',
@@ -105,5 +113,327 @@ export class OrganizationsService {
   async listForUser(userId: string) {
     const organizations = await listOrganizationsForUser(userId);
     return { organizations };
+  }
+
+  async createInvitation(
+    actorUserId: string,
+    organizationId: string,
+    dto: CreateInvitationDto,
+  ) {
+    await this.requireManager(organizationId, actorUserId);
+
+    const existingMemberEmail = await this.findMemberEmailCollision(
+      organizationId,
+      dto.email,
+    );
+    if (existingMemberEmail) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: 'User is already a member of this organization',
+        error: 'Conflict',
+      });
+    }
+
+    const pending = await findPendingInvitationByOrgEmail(
+      organizationId,
+      dto.email,
+    );
+    if (pending) {
+      if (pending.expiresAt <= new Date()) {
+        await markInvitationExpired(pending.id);
+      } else {
+        throw new ConflictException({
+          statusCode: 409,
+          message: 'A pending invitation already exists for this email',
+          error: 'Conflict',
+        });
+      }
+    }
+
+    try {
+      const invitation = await createInvitation({
+        id: randomUUID(),
+        organizationId,
+        email: dto.email,
+        role: dto.role,
+        token: randomBytes(32).toString('hex'),
+        invitedByUserId: actorUserId,
+        expiresAt: new Date(Date.now() + INVITATION_TTL_MS),
+      });
+
+      return {
+        invitation: {
+          id: invitation.id,
+          organizationId: invitation.organizationId,
+          email: invitation.email,
+          role: invitation.role,
+          status: invitation.status,
+          token: invitation.token,
+          expiresAt: invitation.expiresAt,
+          createdAt: invitation.createdAt,
+        },
+      };
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException({
+          statusCode: 409,
+          message: 'A pending invitation already exists for this email',
+          error: 'Conflict',
+        });
+      }
+      this.logger.error('Failed to create invitation');
+      throw new InternalServerErrorException({
+        statusCode: 500,
+        message: 'Unable to create invitation',
+        error: 'Internal Server Error',
+      });
+    }
+  }
+
+  async listMembers(actorUserId: string, organizationId: string) {
+    await this.requireActiveMember(organizationId, actorUserId);
+    const members = await listMembersForOrganization(organizationId);
+    return { members };
+  }
+
+  async updateMember(
+    actorUserId: string,
+    organizationId: string,
+    memberId: string,
+    dto: UpdateMemberDto,
+  ) {
+    if (dto.role === undefined && dto.status === undefined) {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: 'At least one of role or status is required',
+        error: 'Bad Request',
+      });
+    }
+
+    await this.requireManager(organizationId, actorUserId);
+
+    const target = await findMemberInOrganization(organizationId, memberId);
+    if (!target) {
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'Member not found',
+        error: 'Not Found',
+      });
+    }
+
+    if (target.role === 'OWNER') {
+      throw new ForbiddenException({
+        statusCode: 403,
+        message: 'Cannot change the organization owner',
+        error: 'Forbidden',
+      });
+    }
+
+    const updated = await updateMemberInOrganization({
+      organizationId,
+      memberId,
+      role: dto.role,
+      status: dto.status,
+    });
+
+    if (!updated) {
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'Member not found',
+        error: 'Not Found',
+      });
+    }
+
+    return {
+      member: {
+        id: updated.id,
+        organizationId: updated.organizationId,
+        userId: updated.userId,
+        role: updated.role,
+        status: updated.status,
+        updatedAt: updated.updatedAt,
+      },
+    };
+  }
+
+  async removeMember(
+    actorUserId: string,
+    organizationId: string,
+    memberId: string,
+  ) {
+    await this.requireManager(organizationId, actorUserId);
+
+    const target = await findMemberInOrganization(organizationId, memberId);
+    if (!target) {
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'Member not found',
+        error: 'Not Found',
+      });
+    }
+
+    if (target.role === 'OWNER') {
+      throw new ForbiddenException({
+        statusCode: 403,
+        message: 'Cannot remove the organization owner',
+        error: 'Forbidden',
+      });
+    }
+
+    if (target.userId === actorUserId) {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: 'Cannot remove yourself from the organization',
+        error: 'Bad Request',
+      });
+    }
+
+    const removed = await deleteMemberInOrganization(organizationId, memberId);
+    if (!removed) {
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'Member not found',
+        error: 'Not Found',
+      });
+    }
+
+    return { success: true };
+  }
+
+  async acceptInvitation(
+    actorUserId: string,
+    actorEmail: string,
+    token: string,
+  ) {
+    const invitation = await findInvitationByToken(token);
+    if (!invitation) {
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'Invitation not found',
+        error: 'Not Found',
+      });
+    }
+
+    if (invitation.status !== 'PENDING') {
+      throw new ConflictException({
+        statusCode: 409,
+        message: 'Invitation is no longer pending',
+        error: 'Conflict',
+      });
+    }
+
+    if (invitation.expiresAt <= new Date()) {
+      await markInvitationExpired(invitation.id);
+      throw new ConflictException({
+        statusCode: 409,
+        message: 'Invitation has expired',
+        error: 'Conflict',
+      });
+    }
+
+    if (invitation.email.toLowerCase() !== actorEmail.trim().toLowerCase()) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        message: 'Invitation email does not match the authenticated user',
+        error: 'Forbidden',
+      });
+    }
+
+    if (invitation.role === 'OWNER' || !this.isSafeInviteRole(invitation.role)) {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: 'Invitation role is invalid',
+        error: 'Bad Request',
+      });
+    }
+
+    const existing = await findMembershipByOrgUser(
+      invitation.organizationId,
+      actorUserId,
+    );
+    if (existing) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: 'You are already a member of this organization',
+        error: 'Conflict',
+      });
+    }
+
+    try {
+      const result = await acceptInvitation({
+        invitationId: invitation.id,
+        organizationId: invitation.organizationId,
+        userId: actorUserId,
+        role: invitation.role as InvitableRole,
+        membershipId: randomUUID(),
+      });
+
+      return {
+        membership: {
+          id: result.membership.id,
+          organizationId: result.membership.organizationId,
+          userId: result.membership.userId,
+          role: result.membership.role,
+          status: result.membership.status,
+        },
+        invitation: {
+          id: result.invitation.id,
+          status: result.invitation.status,
+          acceptedAt: result.invitation.acceptedAt,
+        },
+      };
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException({
+          statusCode: 409,
+          message: 'You are already a member of this organization',
+          error: 'Conflict',
+        });
+      }
+      this.logger.error('Failed to accept invitation');
+      throw new InternalServerErrorException({
+        statusCode: 500,
+        message: 'Unable to accept invitation',
+        error: 'Internal Server Error',
+      });
+    }
+  }
+
+  private isSafeInviteRole(role: string): role is InvitableRole {
+    return role === 'ADMIN' || role === 'DISPATCHER' || role === 'TECHNICIAN';
+  }
+
+  private async requireActiveMember(organizationId: string, userId: string) {
+    const membership = await findActiveMembership(organizationId, userId);
+    if (!membership) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        message: 'Not a member of this organization',
+        error: 'Forbidden',
+      });
+    }
+    return membership;
+  }
+
+  private async requireManager(organizationId: string, userId: string) {
+    const membership = await this.requireActiveMember(organizationId, userId);
+    if (!isManagerRole(membership.role)) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        message: 'Only owners and admins can manage the team',
+        error: 'Forbidden',
+      });
+    }
+    return membership;
+  }
+
+  private async findMemberEmailCollision(
+    organizationId: string,
+    email: string,
+  ): Promise<boolean> {
+    const members = await listMembersForOrganization(organizationId);
+    return members.some(
+      (member) => member.userEmail.toLowerCase() === email.toLowerCase(),
+    );
   }
 }
