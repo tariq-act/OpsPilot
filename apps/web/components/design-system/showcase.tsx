@@ -1,7 +1,7 @@
 "use client"
 
-import { Moon, Sun } from "lucide-react"
 import { useEffect, useState } from "react"
+import { LuMoon, LuSun } from "react-icons/lu"
 
 import { StatusBadge, opsStatuses } from "@/components/status-badge"
 import { Badge } from "@/components/ui/badge"
@@ -88,7 +88,7 @@ export function DesignSystemShowcase() {
             aria-pressed={dark}
             onClick={() => setDark((value) => !value)}
           >
-            {dark ? <Sun /> : <Moon />}
+            {dark ? <LuSun /> : <LuMoon />}
             {dark ? "Light theme" : "Dark theme"}
           </Button>
         </header>

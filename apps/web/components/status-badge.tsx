@@ -1,18 +1,18 @@
+import type { IconType } from "react-icons"
 import {
-  AlertTriangle,
-  BadgeCheck,
-  Briefcase,
-  Calendar,
-  Circle,
-  CircleCheck,
-  Inbox,
-  Navigation,
-  Play,
-  UserCheck,
-  WifiOff,
-  X,
-  type LucideIcon,
-} from "lucide-react"
+  LuBadgeCheck,
+  LuBriefcase,
+  LuCalendar,
+  LuCircle,
+  LuCircleCheck,
+  LuInbox,
+  LuNavigation,
+  LuPlay,
+  LuTriangleAlert,
+  LuUserCheck,
+  LuWifiOff,
+  LuX,
+} from "react-icons/lu"
 
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -36,80 +36,80 @@ export type OpsStatus = (typeof opsStatuses)[number]
 
 type StatusPresentation = {
   label: string
-  icon: LucideIcon
+  icon: IconType
   className: string
 }
 
 export const statusPresentation: Record<OpsStatus, StatusPresentation> = {
   new: {
     label: "New",
-    icon: Inbox,
+    icon: LuInbox,
     className:
       "border-status-new-border bg-status-new text-status-new-foreground",
   },
   scheduled: {
     label: "Scheduled",
-    icon: Calendar,
+    icon: LuCalendar,
     className:
       "border-status-scheduled-border bg-status-scheduled text-status-scheduled-foreground",
   },
   assigned: {
     label: "Assigned",
-    icon: UserCheck,
+    icon: LuUserCheck,
     className:
       "border-status-assigned-border bg-status-assigned text-status-assigned-foreground",
   },
   "en-route": {
     label: "En Route",
-    icon: Navigation,
+    icon: LuNavigation,
     className:
       "border-status-en-route-border bg-status-en-route text-status-en-route-foreground",
   },
   "in-progress": {
     label: "In Progress",
-    icon: Play,
+    icon: LuPlay,
     className:
       "border-status-in-progress-border bg-status-in-progress text-status-in-progress-foreground",
   },
   completed: {
     label: "Completed",
-    icon: CircleCheck,
+    icon: LuCircleCheck,
     className:
       "border-status-completed-border bg-status-completed text-status-completed-foreground",
   },
   cancelled: {
     label: "Cancelled",
-    icon: X,
+    icon: LuX,
     className:
       "border-status-cancelled-border bg-status-cancelled text-status-cancelled-foreground",
   },
   paid: {
     label: "Paid",
-    icon: BadgeCheck,
+    icon: LuBadgeCheck,
     className:
       "border-status-paid-border bg-status-paid text-status-paid-foreground",
   },
   overdue: {
     label: "Overdue",
-    icon: AlertTriangle,
+    icon: LuTriangleAlert,
     className:
       "border-status-overdue-border bg-status-overdue text-status-overdue-foreground",
   },
   available: {
     label: "Available",
-    icon: Circle,
+    icon: LuCircle,
     className:
       "border-status-available-border bg-status-available text-status-available-foreground",
   },
   working: {
     label: "Working",
-    icon: Briefcase,
+    icon: LuBriefcase,
     className:
       "border-status-working-border bg-status-working text-status-working-foreground",
   },
   offline: {
     label: "Offline",
-    icon: WifiOff,
+    icon: LuWifiOff,
     className:
       "border-status-offline-border bg-status-offline text-status-offline-foreground",
   },
