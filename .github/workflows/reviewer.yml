@@ -33,7 +33,7 @@ jobs:
 
     env:
       # Single model from Actions variable; default if unset.
-      LLM_MODEL: ${{ vars.OPENRABBIT_LLM_MODEL || 'gemini-2.5-flash' }}
+      LLM_MODEL: ${{ vars.OPENRABBIT_LLM_MODEL || 'gemini-3.8-flash' }}
       # OpenRabbit v0.9.1 — pin by commit SHA, never a moving branch.
       OPENRABBIT_REF: 4534913d4062eaedb8da178d3123b7b5c2e4dab4
 

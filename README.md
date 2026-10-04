@@ -288,14 +288,14 @@ reviews do not block merge.
 1. Go to **Settings → Secrets and variables → Actions → Variables**.
 2. Create `OPENRABBIT_LLM_MODEL` with one model id (exact string, no quotes).
 
-If unset, the workflow defaults to `gemini-2.5-flash`.
+If unset, the workflow defaults to `gemini-3.8-flash`.
 
 **Common model ids**
 
 ```text
-gemini-2.5-flash
-gemini-2.5-flash-lite
-gemini-2.5-pro
+gemini-3.8-flash
+gemini-3.5-flash-lite
+gemini-3.1-pro
 gemini-flash-latest
 ```
 
