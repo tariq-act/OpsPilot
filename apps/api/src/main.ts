@@ -5,6 +5,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { resolveWebOrigin } from './lib/web-origin.js';
+import { setupSwagger } from './swagger/setup-swagger.js';
 
 const envFile = join(dirname(fileURLToPath(import.meta.url)), '..', '.env');
 if (existsSync(envFile)) {
@@ -31,6 +32,8 @@ async function bootstrap() {
     origin: resolveWebOrigin(),
     credentials: true,
   });
+
+  setupSwagger(app);
 
   await app.listen(process.env.PORT ?? 3000);
 }

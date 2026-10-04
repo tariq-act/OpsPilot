@@ -47,6 +47,17 @@ $ bun run start:prod
 From the repository root, `bun run dev` starts this API and `apps/web` together
 through Turborepo. `bun run dev --filter=api` starts only the API.
 
+## API reference
+
+Swagger UI is at [http://localhost:3000/docs](http://localhost:3000/docs) while
+the API is running. The OpenAPI document is `/docs-json`. Docs are on unless
+`NODE_ENV=production`, or when `SWAGGER_ENABLED=true`.
+
+Request and response schemas come from `*.dto.ts` classes and the Swagger
+compiler plugin in `nest-cli.json`. Update those classes and the controller
+decorators in the same change as the route. `.cursor/rules/api-swagger.mdc`
+is the checklist.
+
 ## Run tests
 
 ```bash
