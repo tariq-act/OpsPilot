@@ -20,7 +20,8 @@ Architecture detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | `packages/eslint-config`     | Shared ESLint configuration                       |
 | `packages/typescript-config` | Shared TypeScript configuration                   |
 | `docs/ARCHITECTURE.md`       | Current architecture and stack                    |
-| `.github/workflows/ci.yml`   | GitHub Actions CI                                 |
+| `.github/workflows/ci.yml`   | GitHub Actions CI (lint, types, build)            |
+| `.github/workflows/reviewer.yml` | AI PR code review (OpenRabbit + Gemini)        |
 
 Each app and package is TypeScript. Workspaces are `apps/*` and `packages/*`.
 
@@ -235,9 +236,14 @@ before tests. After a fresh clone, run `bun run check-types` or
 
 ## Continuous integration
 
-GitHub Actions runs on every pull request and on every push to `main`. The
-only workflow in this repository is
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+GitHub Actions runs on every pull request and on every push to `main`.
+
+| Workflow | File | When |
+| -------- | ---- | ---- |
+| CI | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Every PR and every push to `main` |
+| PR Code Review | [`.github/workflows/reviewer.yml`](.github/workflows/reviewer.yml) | Non-draft PRs (opened, edited, synchronized) |
+
+### CI checks
 
 CI uses Node.js **24** and Bun **1.3.13**. Dependencies are installed with
 `bun install --frozen-lockfile`. Turborepo remote caching is not configured.
@@ -263,6 +269,38 @@ bun run check-types
 cd apps/api && bun run test && bun run test:e2e
 bun run build
 ```
+
+### PR code review pipeline
+
+OpenRabbit reviews non-draft pull requests and posts a summary plus inline
+comments. Same-repo PRs use `pull_request`; fork PRs use `pull_request_target`
+so the `LLM_API_KEY` secret is available without checking out untrusted PR
+code. Temporary Gemini outages (429/503) soft-succeed with a PR comment so
+reviews do not block merge.
+
+**Required secret**
+
+1. Go to **Settings → Secrets and variables → Actions → Secrets**.
+2. Create `LLM_API_KEY` with a [Google AI Studio](https://aistudio.google.com/apikey) API key.
+
+**Optional model variable**
+
+1. Go to **Settings → Secrets and variables → Actions → Variables**.
+2. Create `OPENRABBIT_LLM_MODEL` with one model id (exact string, no quotes).
+
+If unset, the workflow defaults to `gemini-3.8-flash`.
+
+**Common model ids**
+
+```text
+gemini-3.8-flash
+gemini-3.5-flash-lite
+gemini-3.1-pro
+gemini-flash-latest
+```
+
+After the secret is set, open or push to any non-draft PR and check the
+**PR Code Review** check for the review summary and inline comments.
 
 ## Troubleshooting
 
