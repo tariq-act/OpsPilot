@@ -1,0 +1,15 @@
+---
+description: Do not create or update tests unless the user explicitly types TEST
+alwaysApply: true
+---
+
+# Tests only on explicit TEST
+
+Do not create, update, expand, or regenerate tests (unit, integration, e2e, or snapshots) for this project.
+
+Only write or change tests when the user message includes the exact trigger word `TEST`.
+
+When building features without `TEST`:
+- Implement production code only
+- Skip test files, test scripts, and test config changes that exist only to support new tests
+- Do not offer to add tests unless asked
