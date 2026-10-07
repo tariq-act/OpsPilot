@@ -28,3 +28,16 @@ export {
   updateMemberInOrganization,
 } from './members.js';
 export type { InvitableRole, MemberWithUser } from './members.js';
+export {
+  createCustomer,
+  findCustomerInOrganization,
+  listCustomersByIdsInOrganization,
+  listCustomersForOrganization,
+  listTechnicianVisibleCustomerIds,
+  softDeleteCustomerInOrganization,
+  updateCustomerInOrganization,
+} from './customers.js';
+export type {
+  CreateCustomerInput,
+  UpdateCustomerInput,
+} from './customers.js';
