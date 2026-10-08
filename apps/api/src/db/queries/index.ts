@@ -41,3 +41,16 @@ export type {
   CreateCustomerInput,
   UpdateCustomerInput,
 } from './customers.js';
+export {
+  cancelServiceRequestInOrganization,
+  createServiceRequest,
+  findServiceRequestInOrganization,
+  listServiceRequestsForOrganization,
+  listTechnicianVisibleServiceRequestIds,
+  updateServiceRequestInOrganization,
+} from './service-requests.js';
+export type {
+  CreateServiceRequestInput,
+  ListServiceRequestsFilter,
+  UpdateServiceRequestInput,
+} from './service-requests.js';
