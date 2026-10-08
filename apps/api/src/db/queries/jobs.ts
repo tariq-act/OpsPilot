@@ -1,0 +1,203 @@
+import { and, eq, gte, inArray, lte, type SQL } from 'drizzle-orm';
+import { db } from '../index.js';
+import {
+  job,
+  type Job,
+  type JobPriority,
+  type JobStatus,
+} from '../schema/job.js';
+
+export type CreateJobInput = {
+  id: string;
+  organizationId: string;
+  customerId: string;
+  requestId: string;
+  title: string;
+  description?: string | null;
+  priority: JobPriority;
+  location?: string | null;
+  estimatedDuration?: number | null;
+  createdBy: string;
+};
+
+export type UpdateJobInput = {
+  organizationId: string;
+  jobId: string;
+  title?: string;
+  description?: string | null;
+  priority?: JobPriority;
+  status?: JobStatus;
+  location?: string | null;
+  estimatedDuration?: number | null;
+  actualStart?: Date | null;
+  actualEnd?: Date | null;
+  completedAt?: Date | null;
+};
+
+export type ListJobsFilter = {
+  organizationId: string;
+  status?: JobStatus;
+  priority?: JobPriority;
+  customerId?: string;
+  requestId?: string;
+  fromDate?: Date;
+  toDate?: Date;
+  ids?: string[];
+};
+
+export async function createJob(input: CreateJobInput): Promise<Job> {
+  const [row] = await db
+    .insert(job)
+    .values({
+      id: input.id,
+      organizationId: input.organizationId,
+      customerId: input.customerId,
+      requestId: input.requestId,
+      title: input.title,
+      description: input.description ?? null,
+      priority: input.priority,
+      status: 'DRAFT',
+      location: input.location ?? null,
+      estimatedDuration: input.estimatedDuration ?? null,
+      createdBy: input.createdBy,
+    })
+    .returning();
+
+  if (!row) {
+    throw new Error('Failed to create job');
+  }
+  return row;
+}
+
+export async function listJobsForOrganization(
+  filter: ListJobsFilter,
+): Promise<Job[]> {
+  const conditions: SQL[] = [eq(job.organizationId, filter.organizationId)];
+
+  if (filter.status) {
+    conditions.push(eq(job.status, filter.status));
+  }
+  if (filter.priority) {
+    conditions.push(eq(job.priority, filter.priority));
+  }
+  if (filter.customerId) {
+    conditions.push(eq(job.customerId, filter.customerId));
+  }
+  if (filter.requestId) {
+    conditions.push(eq(job.requestId, filter.requestId));
+  }
+  if (filter.fromDate) {
+    conditions.push(gte(job.createdAt, filter.fromDate));
+  }
+  if (filter.toDate) {
+    conditions.push(lte(job.createdAt, filter.toDate));
+  }
+  if (filter.ids !== undefined) {
+    if (filter.ids.length === 0) {
+      return [];
+    }
+    conditions.push(inArray(job.id, filter.ids));
+  }
+
+  return db
+    .select()
+    .from(job)
+    .where(and(...conditions));
+}
+
+export async function findJobInOrganization(
+  organizationId: string,
+  jobId: string,
+): Promise<Job | null> {
+  const [row] = await db
+    .select()
+    .from(job)
+    .where(and(eq(job.id, jobId), eq(job.organizationId, organizationId)))
+    .limit(1);
+
+  return row ?? null;
+}
+
+export async function findJobByRequestId(
+  organizationId: string,
+  requestId: string,
+): Promise<Job | null> {
+  const [row] = await db
+    .select()
+    .from(job)
+    .where(
+      and(
+        eq(job.requestId, requestId),
+        eq(job.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+
+  return row ?? null;
+}
+
+export async function updateJobInOrganization(
+  input: UpdateJobInput,
+): Promise<Job | null> {
+  const patch: {
+    title?: string;
+    description?: string | null;
+    priority?: JobPriority;
+    status?: JobStatus;
+    location?: string | null;
+    estimatedDuration?: number | null;
+    actualStart?: Date | null;
+    actualEnd?: Date | null;
+    completedAt?: Date | null;
+  } = {};
+
+  if (input.title !== undefined) patch.title = input.title;
+  if (input.description !== undefined) patch.description = input.description;
+  if (input.priority !== undefined) patch.priority = input.priority;
+  if (input.status !== undefined) patch.status = input.status;
+  if (input.location !== undefined) patch.location = input.location;
+  if (input.estimatedDuration !== undefined) {
+    patch.estimatedDuration = input.estimatedDuration;
+  }
+  if (input.actualStart !== undefined) patch.actualStart = input.actualStart;
+  if (input.actualEnd !== undefined) patch.actualEnd = input.actualEnd;
+  if (input.completedAt !== undefined) patch.completedAt = input.completedAt;
+
+  const [row] = await db
+    .update(job)
+    .set(patch)
+    .where(
+      and(
+        eq(job.id, input.jobId),
+        eq(job.organizationId, input.organizationId),
+      ),
+    )
+    .returning();
+
+  return row ?? null;
+}
+
+/** Soft cancel: set status to CANCELLED. */
+export async function cancelJobInOrganization(
+  organizationId: string,
+  jobId: string,
+): Promise<Job | null> {
+  const [row] = await db
+    .update(job)
+    .set({ status: 'CANCELLED' })
+    .where(and(eq(job.id, jobId), eq(job.organizationId, organizationId)))
+    .returning();
+
+  return row ?? null;
+}
+
+/**
+ * Job IDs a technician may view/update via assignment.
+ * Assignment is not implemented yet, so this always returns [].
+ */
+export async function listTechnicianVisibleJobIds(
+  _organizationId: string,
+  _technicianUserId: string,
+): Promise<string[]> {
+  return [];
+}

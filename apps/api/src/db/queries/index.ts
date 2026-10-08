@@ -54,3 +54,17 @@ export type {
   ListServiceRequestsFilter,
   UpdateServiceRequestInput,
 } from './service-requests.js';
+export {
+  cancelJobInOrganization,
+  createJob,
+  findJobByRequestId,
+  findJobInOrganization,
+  listJobsForOrganization,
+  listTechnicianVisibleJobIds,
+  updateJobInOrganization,
+} from './jobs.js';
+export type {
+  CreateJobInput,
+  ListJobsFilter,
+  UpdateJobInput,
+} from './jobs.js';
