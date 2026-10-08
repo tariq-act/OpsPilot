@@ -7,6 +7,7 @@ import { HealthModule } from './health/health.module.js';
 import { auth } from './lib/auth.js';
 import { CustomersModule } from './customers/customers.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
+import { ServiceRequestsModule } from './service-requests/service-requests.module.js';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { OrganizationsModule } from './organizations/organizations.module.js';
     AuthModule,
     OrganizationsModule,
     CustomersModule,
+    ServiceRequestsModule,
     HealthModule,
   ],
   controllers: [AppController],

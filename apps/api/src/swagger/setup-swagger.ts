@@ -31,6 +31,8 @@ export function setupSwagger(app: INestApplication): void {
     .addTag('Auth', 'Email and password signup and login')
     .addTag('Organizations', 'Business organizations and team membership')
     .addTag('Invitations', 'Accept a team invitation')
+    .addTag('Customers', 'Organization customer records')
+    .addTag('Service Requests', 'Customer service request intake')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

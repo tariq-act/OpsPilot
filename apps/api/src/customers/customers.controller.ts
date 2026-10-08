@@ -29,7 +29,7 @@ import {
   CustomerResponseDto,
 } from './dto/customer-response.dto.js';
 import { UpdateCustomerDto } from './dto/update-customer.dto.js';
-import { OrganizationId } from './organization-id.decorator.js';
+import { OrganizationId } from '../common/organization-id.decorator.js';
 
 @ApiTags('Customers')
 @ApiSession()
