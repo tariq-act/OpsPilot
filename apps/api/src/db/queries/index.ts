@@ -68,3 +68,17 @@ export type {
   ListJobsFilter,
   UpdateJobInput,
 } from './jobs.js';
+export {
+  createTechnician,
+  findTechnicianByEmployeeCodeInOrganization,
+  findTechnicianByUserInOrganization,
+  findTechnicianInOrganization,
+  listTechniciansForOrganization,
+  softDeleteTechnicianInOrganization,
+  updateTechnicianInOrganization,
+} from './technicians.js';
+export type {
+  CreateTechnicianInput,
+  ListTechniciansFilter,
+  UpdateTechnicianInput,
+} from './technicians.js';

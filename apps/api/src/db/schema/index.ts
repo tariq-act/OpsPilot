@@ -11,3 +11,4 @@ export * from './invitation.js';
 export * from './customer.js';
 export * from './service-request.js';
 export * from './job.js';
+export * from './technician.js';
