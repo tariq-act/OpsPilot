@@ -7,6 +7,10 @@ import {
   type ServiceRequestSource,
   type ServiceRequestStatus,
 } from '../schema/service-request.js';
+import {
+  listJobIdsAssignedToTechnicianUser,
+  listRequestIdsForAssignedJobs,
+} from './job-assignments.js';
 
 export type CreateServiceRequestInput = {
   id: string;
@@ -183,12 +187,15 @@ export async function cancelServiceRequestInOrganization(
 }
 
 /**
- * Service request IDs a technician may view via assigned work.
- * Jobs / assignment are not implemented yet, so this always returns [].
+ * Service request IDs a technician may view via actively assigned jobs.
  */
 export async function listTechnicianVisibleServiceRequestIds(
-  _organizationId: string,
-  _technicianUserId: string,
+  organizationId: string,
+  technicianUserId: string,
 ): Promise<string[]> {
-  return [];
+  const jobIds = await listJobIdsAssignedToTechnicianUser(
+    organizationId,
+    technicianUserId,
+  );
+  return listRequestIdsForAssignedJobs(organizationId, jobIds);
 }

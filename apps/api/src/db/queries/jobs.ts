@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, lte, type SQL } from 'drizzle-orm';
+import { and, eq, gt, inArray, lt, type SQL } from 'drizzle-orm';
 import { db } from '../index.js';
 import {
   job,
@@ -6,6 +6,7 @@ import {
   type JobPriority,
   type JobStatus,
 } from '../schema/job.js';
+import { listJobIdsAssignedToTechnicianUser } from './job-assignments.js';
 
 export type CreateJobInput = {
   id: string;
@@ -28,6 +29,8 @@ export type UpdateJobInput = {
   priority?: JobPriority;
   status?: JobStatus;
   location?: string | null;
+  scheduledStart?: Date | null;
+  scheduledEnd?: Date | null;
   estimatedDuration?: number | null;
   actualStart?: Date | null;
   actualEnd?: Date | null;
@@ -40,10 +43,14 @@ export type ListJobsFilter = {
   priority?: JobPriority;
   customerId?: string;
   requestId?: string;
+  /** Inclusive window start; jobs overlapping [fromDate, toDate] by schedule. */
   fromDate?: Date;
   toDate?: Date;
+  technicianId?: string;
   ids?: string[];
 };
+
+export type DbExecutor = Pick<typeof db, 'insert' | 'update' | 'select'>;
 
 export async function createJob(input: CreateJobInput): Promise<Job> {
   const [row] = await db
@@ -87,10 +94,12 @@ export async function listJobsForOrganization(
     conditions.push(eq(job.requestId, filter.requestId));
   }
   if (filter.fromDate) {
-    conditions.push(gte(job.createdAt, filter.fromDate));
+    // Overlap: scheduledEnd > fromDate (null schedule excluded).
+    conditions.push(gt(job.scheduledEnd, filter.fromDate));
   }
   if (filter.toDate) {
-    conditions.push(lte(job.createdAt, filter.toDate));
+    // Overlap: scheduledStart < toDate (null schedule excluded).
+    conditions.push(lt(job.scheduledStart, filter.toDate));
   }
   if (filter.ids !== undefined) {
     if (filter.ids.length === 0) {
@@ -108,8 +117,9 @@ export async function listJobsForOrganization(
 export async function findJobInOrganization(
   organizationId: string,
   jobId: string,
+  executor: DbExecutor = db,
 ): Promise<Job | null> {
-  const [row] = await db
+  const [row] = await executor
     .select()
     .from(job)
     .where(and(eq(job.id, jobId), eq(job.organizationId, organizationId)))
@@ -138,6 +148,7 @@ export async function findJobByRequestId(
 
 export async function updateJobInOrganization(
   input: UpdateJobInput,
+  executor: DbExecutor = db,
 ): Promise<Job | null> {
   const patch: {
     title?: string;
@@ -145,6 +156,8 @@ export async function updateJobInOrganization(
     priority?: JobPriority;
     status?: JobStatus;
     location?: string | null;
+    scheduledStart?: Date | null;
+    scheduledEnd?: Date | null;
     estimatedDuration?: number | null;
     actualStart?: Date | null;
     actualEnd?: Date | null;
@@ -156,6 +169,12 @@ export async function updateJobInOrganization(
   if (input.priority !== undefined) patch.priority = input.priority;
   if (input.status !== undefined) patch.status = input.status;
   if (input.location !== undefined) patch.location = input.location;
+  if (input.scheduledStart !== undefined) {
+    patch.scheduledStart = input.scheduledStart;
+  }
+  if (input.scheduledEnd !== undefined) {
+    patch.scheduledEnd = input.scheduledEnd;
+  }
   if (input.estimatedDuration !== undefined) {
     patch.estimatedDuration = input.estimatedDuration;
   }
@@ -163,7 +182,7 @@ export async function updateJobInOrganization(
   if (input.actualEnd !== undefined) patch.actualEnd = input.actualEnd;
   if (input.completedAt !== undefined) patch.completedAt = input.completedAt;
 
-  const [row] = await db
+  const [row] = await executor
     .update(job)
     .set(patch)
     .where(
@@ -192,12 +211,11 @@ export async function cancelJobInOrganization(
 }
 
 /**
- * Job IDs a technician may view/update via assignment.
- * Assignment is not implemented yet, so this always returns [].
+ * Job IDs a technician may view/update via active assignment.
  */
 export async function listTechnicianVisibleJobIds(
-  _organizationId: string,
-  _technicianUserId: string,
+  organizationId: string,
+  technicianUserId: string,
 ): Promise<string[]> {
-  return [];
+  return listJobIdsAssignedToTechnicianUser(organizationId, technicianUserId);
 }

@@ -10,6 +10,8 @@ export class JobDto {
   priority!: JobPriority;
   status!: JobStatus;
   location!: string | null;
+  scheduledStart!: Date | null;
+  scheduledEnd!: Date | null;
   estimatedDuration!: number | null;
   actualStart!: Date | null;
   actualEnd!: Date | null;

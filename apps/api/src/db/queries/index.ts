@@ -82,3 +82,18 @@ export type {
   ListTechniciansFilter,
   UpdateTechnicianInput,
 } from './technicians.js';
+export {
+  cancelActiveAssignmentsForJob,
+  createJobAssignment,
+  findActiveAssignmentForJobTechnician,
+  findAssignmentInOrganization,
+  findOverlappingAssignmentsForTechnician,
+  listActiveAssignmentsForJob,
+  listAssignmentsForJob,
+  listCustomerIdsForAssignedJobs,
+  listJobIdsAssignedToTechnicianUser,
+  listJobIdsForTechnicianInOrganization,
+  listRequestIdsForAssignedJobs,
+  updateAssignmentStatusInOrganization,
+} from './job-assignments.js';
+export type { CreateJobAssignmentInput } from './job-assignments.js';

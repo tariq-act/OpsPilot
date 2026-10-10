@@ -49,4 +49,12 @@ export class ListJobsQueryDto {
   @IsOptional()
   @IsDateString({}, { message: 'toDate must be a valid ISO date string' })
   toDate?: string;
+
+  /** Filter to jobs with an active assignment for this technician profile id. */
+  @IsOptional()
+  @Transform(trimString)
+  @IsString({ message: 'Technician id must be a string' })
+  @MinLength(1, { message: 'Technician id is required when provided' })
+  @MaxLength(128, { message: 'Technician id must be at most 128 characters' })
+  technicianId?: string;
 }

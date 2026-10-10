@@ -5,6 +5,10 @@ import {
   type Customer,
   type CustomerStatus,
 } from '../schema/customer.js';
+import {
+  listCustomerIdsForAssignedJobs,
+  listJobIdsAssignedToTechnicianUser,
+} from './job-assignments.js';
 
 export type CreateCustomerInput = {
   id: string;
@@ -160,12 +164,15 @@ export async function softDeleteCustomerInOrganization(
 }
 
 /**
- * Customer IDs a technician may view via assigned jobs.
- * Jobs are not implemented yet, so this always returns an empty list.
+ * Customer IDs a technician may view via actively assigned jobs.
  */
 export async function listTechnicianVisibleCustomerIds(
-  _organizationId: string,
-  _technicianUserId: string,
+  organizationId: string,
+  technicianUserId: string,
 ): Promise<string[]> {
-  return [];
+  const jobIds = await listJobIdsAssignedToTechnicianUser(
+    organizationId,
+    technicianUserId,
+  );
+  return listCustomerIdsForAssignedJobs(organizationId, jobIds);
 }
