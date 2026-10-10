@@ -33,6 +33,8 @@ export function setupSwagger(app: INestApplication): void {
     .addTag('Invitations', 'Accept a team invitation')
     .addTag('Customers', 'Organization customer records')
     .addTag('Service Requests', 'Customer service request intake')
+    .addTag('Jobs', 'Operational jobs from accepted service requests')
+    .addTag('Technicians', 'Organization technician profiles')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

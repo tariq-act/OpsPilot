@@ -54,3 +54,31 @@ export type {
   ListServiceRequestsFilter,
   UpdateServiceRequestInput,
 } from './service-requests.js';
+export {
+  cancelJobInOrganization,
+  createJob,
+  findJobByRequestId,
+  findJobInOrganization,
+  listJobsForOrganization,
+  listTechnicianVisibleJobIds,
+  updateJobInOrganization,
+} from './jobs.js';
+export type {
+  CreateJobInput,
+  ListJobsFilter,
+  UpdateJobInput,
+} from './jobs.js';
+export {
+  createTechnician,
+  findTechnicianByEmployeeCodeInOrganization,
+  findTechnicianByUserInOrganization,
+  findTechnicianInOrganization,
+  listTechniciansForOrganization,
+  softDeleteTechnicianInOrganization,
+  updateTechnicianInOrganization,
+} from './technicians.js';
+export type {
+  CreateTechnicianInput,
+  ListTechniciansFilter,
+  UpdateTechnicianInput,
+} from './technicians.js';
