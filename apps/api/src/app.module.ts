@@ -9,6 +9,7 @@ import { CustomersModule } from './customers/customers.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { JobsModule } from './jobs/jobs.module.js';
 import { ServiceRequestsModule } from './service-requests/service-requests.module.js';
+import { StorageModule } from './storage/storage.module.js';
 import { TechniciansModule } from './technicians/technicians.module.js';
 
 @Module({
@@ -17,6 +18,7 @@ import { TechniciansModule } from './technicians/technicians.module.js';
       auth,
     }),
     AuthModule,
+    StorageModule,
     OrganizationsModule,
     CustomersModule,
     ServiceRequestsModule,

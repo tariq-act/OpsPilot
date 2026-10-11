@@ -2,16 +2,21 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  StreamableFile,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import {
   cancelActiveAssignmentsForJob,
   createJob,
+  createJobActivity,
   createJobAssignment,
+  createJobNote,
+  createJobPhoto,
   findActiveAssignmentForJobTechnician,
   findActiveMembership,
   findAssignmentInOrganization,
@@ -19,34 +24,57 @@ import {
   findJobByRequestId,
   findJobInOrganization,
   findOverlappingAssignmentsForTechnician,
+  findPhotoInOrganization,
   findServiceRequestInOrganization,
   findTechnicianInOrganization,
   listActiveAssignmentsForJob,
+  listActivitiesForJob,
   listAssignmentsForJob,
   listJobIdsForTechnicianInOrganization,
   listJobsForOrganization,
+  listNotesForJob,
+  listPhotosForJob,
   listTechnicianVisibleJobIds,
   updateAssignmentStatusInOrganization,
   updateJobInOrganization,
 } from '../db/queries/index.js';
 import { db } from '../db/index.js';
+import type { JobActivity } from '../db/schema/job-activity.js';
 import type { JobAssignment } from '../db/schema/job-assignment.js';
+import type { JobNote } from '../db/schema/job-note.js';
+import type { JobPhoto, JobPhotoKind } from '../db/schema/job-photo.js';
 import type { Job, JobPriority } from '../db/schema/job.js';
 import type {
   OrganizationMember,
   OrganizationMemberRole,
 } from '../db/schema/organization.js';
+import {
+  FILE_STORAGE,
+  type FileStorage,
+} from '../storage/file-storage.js';
 import { canTransitionAssignmentStatus } from './assignment-status.js';
 import type {
   AssignTechniciansDto,
   ReassignTechnicianDto,
 } from './dto/assign-technicians.dto.js';
+import type { CompleteJobDto } from './dto/complete-job.dto.js';
 import type { CreateJobDto } from './dto/create-job.dto.js';
+import type { CreateJobNoteDto } from './dto/create-job-note.dto.js';
 import type { ListJobsQueryDto } from './dto/list-jobs-query.dto.js';
 import type { ScheduleJobDto } from './dto/schedule-job.dto.js';
 import type { UpdateAssignmentDto } from './dto/update-assignment.dto.js';
 import type { UpdateJobDto } from './dto/update-job.dto.js';
+import type { UpdateProgressDto } from './dto/update-progress.dto.js';
 import { canTransitionJobStatus } from './job-status.js';
+
+const ALLOWED_PHOTO_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+]);
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
 const JOB_MANAGER_ROLES = [
   'OWNER',
@@ -79,9 +107,49 @@ function toJobDto(row: Job) {
     actualStart: row.actualStart,
     actualEnd: row.actualEnd,
     completedAt: row.completedAt,
+    completionSummary: row.completionSummary,
     createdBy: row.createdBy,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  };
+}
+
+function toNoteDto(row: JobNote) {
+  return {
+    id: row.id,
+    organizationId: row.organizationId,
+    jobId: row.jobId,
+    body: row.body,
+    createdBy: row.createdBy,
+    createdAt: row.createdAt,
+  };
+}
+
+function toPhotoDto(row: JobPhoto) {
+  return {
+    id: row.id,
+    organizationId: row.organizationId,
+    jobId: row.jobId,
+    kind: row.kind,
+    fileName: row.fileName,
+    mimeType: row.mimeType,
+    sizeBytes: row.sizeBytes,
+    uploadedBy: row.uploadedBy,
+    createdAt: row.createdAt,
+  };
+}
+
+function toActivityDto(row: JobActivity) {
+  return {
+    id: row.id,
+    organizationId: row.organizationId,
+    jobId: row.jobId,
+    action: row.action,
+    fromStatus: row.fromStatus,
+    toStatus: row.toStatus,
+    message: row.message,
+    actorUserId: row.actorUserId,
+    createdAt: row.createdAt,
   };
 }
 
@@ -150,7 +218,7 @@ function mapServiceRequestPriority(priority: string): JobPriority {
 }
 
 function assertSchedulableStatus(status: Job['status']): void {
-  if (status === 'COMPLETED' || status === 'CANCELLED') {
+  if (status !== 'DRAFT' && status !== 'CONFIRMED') {
     throw new ConflictException({
       statusCode: 409,
       message: `Cannot schedule a job in status ${status}`,
@@ -162,6 +230,10 @@ function assertSchedulableStatus(status: Job['status']): void {
 @Injectable()
 export class JobsService {
   private readonly logger = new Logger(JobsService.name);
+
+  constructor(
+    @Inject(FILE_STORAGE) private readonly fileStorage: FileStorage,
+  ) {}
 
   async create(
     actorUserId: string,
@@ -428,11 +500,27 @@ export class JobsService {
           error: 'Forbidden',
         });
       }
+      if (dto.status !== undefined) {
+        throw new ForbiddenException({
+          statusCode: 403,
+          message:
+            'Technicians must use progress and complete endpoints for status changes',
+          error: 'Forbidden',
+        });
+      }
     } else {
       throw new ForbiddenException({
         statusCode: 403,
         message: 'Not allowed to update jobs',
         error: 'Forbidden',
+      });
+    }
+
+    if (dto.status === 'COMPLETED') {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: 'Use the complete endpoint to finish a job',
+        error: 'Bad Request',
       });
     }
 
@@ -451,35 +539,44 @@ export class JobsService {
     const now = new Date();
     let actualStart = parseOptionalDate(dto.actualStart);
     let actualEnd = parseOptionalDate(dto.actualEnd);
-    let completedAt: Date | null | undefined = undefined;
 
     if (nextStatus === 'IN_PROGRESS' && existing.actualStart == null) {
       if (actualStart === undefined) actualStart = now;
     }
-    if (nextStatus === 'COMPLETED') {
-      if (actualEnd === undefined && existing.actualEnd == null) {
-        actualEnd = now;
-      }
-      if (existing.completedAt == null) {
-        completedAt = now;
-      }
-      if (actualStart === undefined && existing.actualStart == null) {
-        actualStart = now;
-      }
-    }
 
-    const updated = await updateJobInOrganization({
-      organizationId,
-      jobId,
-      title: dto.title,
-      description: dto.description,
-      priority: dto.priority,
-      status: dto.status,
-      location: dto.location,
-      estimatedDuration: dto.estimatedDuration,
-      actualStart,
-      actualEnd,
-      completedAt,
+    const updated = await db.transaction(async (tx) => {
+      const row = await updateJobInOrganization(
+        {
+          organizationId,
+          jobId,
+          title: dto.title,
+          description: dto.description,
+          priority: dto.priority,
+          status: dto.status,
+          location: dto.location,
+          estimatedDuration: dto.estimatedDuration,
+          actualStart,
+          actualEnd,
+        },
+        tx,
+      );
+      if (!row) return null;
+
+      if (dto.status !== undefined && dto.status !== existing.status) {
+        await createJobActivity(
+          {
+            id: randomUUID(),
+            organizationId,
+            jobId,
+            action: 'STATUS_CHANGED',
+            actorUserId: actorUserId,
+            fromStatus: existing.status,
+            toStatus: dto.status,
+          },
+          tx,
+        );
+      }
+      return row;
     });
 
     if (!updated) {
@@ -535,6 +632,18 @@ export class JobsService {
         return null;
       }
       await cancelActiveAssignmentsForJob(organizationId, jobId, now, tx);
+      await createJobActivity(
+        {
+          id: randomUUID(),
+          organizationId,
+          jobId,
+          action: 'STATUS_CHANGED',
+          actorUserId,
+          fromStatus: existing.status,
+          toStatus: 'CANCELLED',
+        },
+        tx,
+      );
       return cancelled;
     });
 
@@ -1094,6 +1203,403 @@ export class JobsService {
     return { assignment: toAssignmentDto(updated) };
   }
 
+  async updateProgress(
+    actorUserId: string,
+    organizationId: string,
+    jobId: string,
+    dto: UpdateProgressDto,
+  ) {
+    const { job: existing } = await this.requireJobExecutorAccess(
+      organizationId,
+      actorUserId,
+      jobId,
+    );
+
+    if (!canTransitionJobStatus(existing.status, dto.status)) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: `Cannot change status from ${existing.status} to ${dto.status}`,
+        error: 'Conflict',
+      });
+    }
+
+    const now = new Date();
+    let actualStart: Date | undefined;
+    if (dto.status === 'IN_PROGRESS' && existing.actualStart == null) {
+      actualStart = now;
+    }
+
+    const updated = await db.transaction(async (tx) => {
+      const row = await updateJobInOrganization(
+        {
+          organizationId,
+          jobId,
+          status: dto.status,
+          actualStart,
+        },
+        tx,
+      );
+      if (!row) return null;
+
+      if (dto.status !== existing.status) {
+        await createJobActivity(
+          {
+            id: randomUUID(),
+            organizationId,
+            jobId,
+            action: 'STATUS_CHANGED',
+            actorUserId,
+            fromStatus: existing.status,
+            toStatus: dto.status,
+            message: dto.note ?? null,
+          },
+          tx,
+        );
+      }
+
+      if (dto.note) {
+        await createJobNote(
+          {
+            id: randomUUID(),
+            organizationId,
+            jobId,
+            body: dto.note,
+            createdBy: actorUserId,
+          },
+          tx,
+        );
+        await createJobActivity(
+          {
+            id: randomUUID(),
+            organizationId,
+            jobId,
+            action: 'NOTE_ADDED',
+            actorUserId,
+            message: dto.note,
+          },
+          tx,
+        );
+      }
+
+      return row;
+    });
+
+    if (!updated) {
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'Job not found',
+        error: 'Not Found',
+      });
+    }
+
+    return { job: toJobDto(updated) };
+  }
+
+  async completeJob(
+    actorUserId: string,
+    organizationId: string,
+    jobId: string,
+    dto: CompleteJobDto,
+  ) {
+    const { job: existing } = await this.requireJobExecutorAccess(
+      organizationId,
+      actorUserId,
+      jobId,
+    );
+
+    if (!canTransitionJobStatus(existing.status, 'COMPLETED')) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: `Cannot complete a job in status ${existing.status}`,
+        error: 'Conflict',
+      });
+    }
+
+    const summary = dto.completionSummary.trim();
+    if (summary.length === 0) {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: 'Completion summary is required',
+        error: 'Bad Request',
+      });
+    }
+
+    const now = new Date();
+    const updated = await db.transaction(async (tx) => {
+      const row = await updateJobInOrganization(
+        {
+          organizationId,
+          jobId,
+          status: 'COMPLETED',
+          completionSummary: summary,
+          actualEnd: existing.actualEnd ?? now,
+          completedAt: existing.completedAt ?? now,
+          actualStart: existing.actualStart ?? now,
+        },
+        tx,
+      );
+      if (!row) return null;
+
+      await createJobActivity(
+        {
+          id: randomUUID(),
+          organizationId,
+          jobId,
+          action: 'COMPLETED',
+          actorUserId,
+          fromStatus: existing.status,
+          toStatus: 'COMPLETED',
+          message: summary,
+        },
+        tx,
+      );
+
+      if (dto.note) {
+        await createJobNote(
+          {
+            id: randomUUID(),
+            organizationId,
+            jobId,
+            body: dto.note,
+            createdBy: actorUserId,
+          },
+          tx,
+        );
+        await createJobActivity(
+          {
+            id: randomUUID(),
+            organizationId,
+            jobId,
+            action: 'NOTE_ADDED',
+            actorUserId,
+            message: dto.note,
+          },
+          tx,
+        );
+      }
+
+      return row;
+    });
+
+    if (!updated) {
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'Job not found',
+        error: 'Not Found',
+      });
+    }
+
+    return { job: toJobDto(updated) };
+  }
+
+  async addNote(
+    actorUserId: string,
+    organizationId: string,
+    jobId: string,
+    dto: CreateJobNoteDto,
+  ) {
+    await this.requireJobExecutorAccess(organizationId, actorUserId, jobId);
+
+    const note = await db.transaction(async (tx) => {
+      const created = await createJobNote(
+        {
+          id: randomUUID(),
+          organizationId,
+          jobId,
+          body: dto.body,
+          createdBy: actorUserId,
+        },
+        tx,
+      );
+      await createJobActivity(
+        {
+          id: randomUUID(),
+          organizationId,
+          jobId,
+          action: 'NOTE_ADDED',
+          actorUserId,
+          message: dto.body,
+        },
+        tx,
+      );
+      return created;
+    });
+
+    return { note: toNoteDto(note) };
+  }
+
+  async listNotes(
+    actorUserId: string,
+    organizationId: string,
+    jobId: string,
+  ) {
+    await this.requireJobViewerAccess(organizationId, actorUserId, jobId);
+    const notes = await listNotesForJob(organizationId, jobId);
+    return { notes: notes.map(toNoteDto) };
+  }
+
+  async uploadPhoto(
+    actorUserId: string,
+    organizationId: string,
+    jobId: string,
+    kind: JobPhotoKind,
+    file: Express.Multer.File | undefined,
+  ) {
+    await this.requireJobExecutorAccess(organizationId, actorUserId, jobId);
+
+    if (!file) {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: 'Photo file is required',
+        error: 'Bad Request',
+      });
+    }
+
+    if (!ALLOWED_PHOTO_MIME_TYPES.has(file.mimetype)) {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: 'Photo must be jpeg, png, webp, or heic',
+        error: 'Bad Request',
+      });
+    }
+
+    if (file.size > MAX_PHOTO_BYTES) {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: 'Photo must be at most 10MB',
+        error: 'Bad Request',
+      });
+    }
+
+    const photoId = randomUUID();
+    const extension = extensionForMime(file.mimetype);
+    const storageKey = `${organizationId}/jobs/${jobId}/${photoId}${extension}`;
+
+    await this.fileStorage.put({
+      key: storageKey,
+      body: file.buffer,
+      contentType: file.mimetype,
+    });
+
+    try {
+      const photo = await db.transaction(async (tx) => {
+        const created = await createJobPhoto(
+          {
+            id: photoId,
+            organizationId,
+            jobId,
+            kind,
+            storageKey,
+            fileName: file.originalname || `${photoId}${extension}`,
+            mimeType: file.mimetype,
+            sizeBytes: file.size,
+            uploadedBy: actorUserId,
+          },
+          tx,
+        );
+        await createJobActivity(
+          {
+            id: randomUUID(),
+            organizationId,
+            jobId,
+            action: 'PHOTO_UPLOADED',
+            actorUserId,
+            message: `${kind}: ${created.fileName}`,
+          },
+          tx,
+        );
+        return created;
+      });
+
+      return { photo: toPhotoDto(photo) };
+    } catch (error) {
+      await this.fileStorage.delete(storageKey).catch(() => undefined);
+      this.logger.error('Failed to persist job photo metadata', error);
+      throw new InternalServerErrorException({
+        statusCode: 500,
+        message: 'Unable to upload photo',
+        error: 'Internal Server Error',
+      });
+    }
+  }
+
+  async listPhotos(
+    actorUserId: string,
+    organizationId: string,
+    jobId: string,
+  ) {
+    await this.requireJobViewerAccess(organizationId, actorUserId, jobId);
+    const photos = await listPhotosForJob(organizationId, jobId);
+    return { photos: photos.map(toPhotoDto) };
+  }
+
+  async getPhotoContent(
+    actorUserId: string,
+    organizationId: string,
+    jobId: string,
+    photoId: string,
+  ): Promise<{ file: StreamableFile; mimeType: string; fileName: string }> {
+    await this.requireJobViewerAccess(organizationId, actorUserId, jobId);
+
+    const photo = await findPhotoInOrganization(organizationId, photoId);
+    if (!photo || photo.jobId !== jobId) {
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'Photo not found',
+        error: 'Not Found',
+      });
+    }
+
+    const object = await this.fileStorage.get(photo.storageKey);
+    if (!object) {
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'Photo file not found',
+        error: 'Not Found',
+      });
+    }
+
+    return {
+      file: new StreamableFile(object.body),
+      mimeType: photo.mimeType,
+      fileName: photo.fileName,
+    };
+  }
+
+  async listActivities(
+    actorUserId: string,
+    organizationId: string,
+    jobId: string,
+  ) {
+    await this.requireJobViewerAccess(organizationId, actorUserId, jobId);
+    const activities = await listActivitiesForJob(organizationId, jobId);
+    return { activities: activities.map(toActivityDto) };
+  }
+
+  async getExecution(
+    actorUserId: string,
+    organizationId: string,
+    jobId: string,
+  ) {
+    const { job } = await this.requireJobViewerAccess(
+      organizationId,
+      actorUserId,
+      jobId,
+    );
+    const [notes, photos, activities] = await Promise.all([
+      listNotesForJob(organizationId, jobId),
+      listPhotosForJob(organizationId, jobId),
+      listActivitiesForJob(organizationId, jobId),
+    ]);
+
+    return {
+      job: toJobDto(job),
+      notes: notes.map(toNoteDto),
+      photos: photos.map(toPhotoDto),
+      activities: activities.map(toActivityDto),
+    };
+  }
+
   private async requireActiveMember(
     organizationId: string,
     userId: string,
@@ -1123,4 +1629,105 @@ export class JobsService {
     }
     return membership;
   }
+
+  /** Managers or assigned technicians may mutate execution state. */
+  private async requireJobExecutorAccess(
+    organizationId: string,
+    userId: string,
+    jobId: string,
+  ): Promise<{ membership: OrganizationMember; job: Job }> {
+    const membership = await this.requireActiveMember(organizationId, userId);
+    const job = await findJobInOrganization(organizationId, jobId);
+    if (!job) {
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'Job not found',
+        error: 'Not Found',
+      });
+    }
+
+    if (isJobManagerRole(membership.role)) {
+      return { membership, job };
+    }
+
+    if (membership.role === 'TECHNICIAN') {
+      const visibleIds = await listTechnicianVisibleJobIds(
+        organizationId,
+        userId,
+      );
+      if (!visibleIds.includes(job.id)) {
+        throw new ForbiddenException({
+          statusCode: 403,
+          message: 'Not allowed to update this job',
+          error: 'Forbidden',
+        });
+      }
+      return { membership, job };
+    }
+
+    throw new ForbiddenException({
+      statusCode: 403,
+      message: 'Not allowed to update job execution',
+      error: 'Forbidden',
+    });
+  }
+
+  /** Managers or assigned technicians may view execution details. */
+  private async requireJobViewerAccess(
+    organizationId: string,
+    userId: string,
+    jobId: string,
+  ): Promise<{ membership: OrganizationMember; job: Job }> {
+    const membership = await this.requireActiveMember(organizationId, userId);
+    const job = await findJobInOrganization(organizationId, jobId);
+    if (!job) {
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'Job not found',
+        error: 'Not Found',
+      });
+    }
+
+    if (isJobManagerRole(membership.role)) {
+      return { membership, job };
+    }
+
+    if (membership.role === 'TECHNICIAN') {
+      const visibleIds = await listTechnicianVisibleJobIds(
+        organizationId,
+        userId,
+      );
+      if (!visibleIds.includes(job.id)) {
+        throw new NotFoundException({
+          statusCode: 404,
+          message: 'Job not found',
+          error: 'Not Found',
+        });
+      }
+      return { membership, job };
+    }
+
+    throw new ForbiddenException({
+      statusCode: 403,
+      message: 'Not allowed to view job execution',
+      error: 'Forbidden',
+    });
+  }
 }
+
+function extensionForMime(mimeType: string): string {
+  switch (mimeType) {
+    case 'image/jpeg':
+      return '.jpg';
+    case 'image/png':
+      return '.png';
+    case 'image/webp':
+      return '.webp';
+    case 'image/heic':
+    case 'image/heif':
+      return '.heic';
+    default:
+      return '';
+  }
+}
+

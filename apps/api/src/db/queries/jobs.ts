@@ -35,6 +35,7 @@ export type UpdateJobInput = {
   actualStart?: Date | null;
   actualEnd?: Date | null;
   completedAt?: Date | null;
+  completionSummary?: string | null;
 };
 
 export type ListJobsFilter = {
@@ -162,6 +163,7 @@ export async function updateJobInOrganization(
     actualStart?: Date | null;
     actualEnd?: Date | null;
     completedAt?: Date | null;
+    completionSummary?: string | null;
   } = {};
 
   if (input.title !== undefined) patch.title = input.title;
@@ -181,6 +183,9 @@ export async function updateJobInOrganization(
   if (input.actualStart !== undefined) patch.actualStart = input.actualStart;
   if (input.actualEnd !== undefined) patch.actualEnd = input.actualEnd;
   if (input.completedAt !== undefined) patch.completedAt = input.completedAt;
+  if (input.completionSummary !== undefined) {
+    patch.completionSummary = input.completionSummary;
+  }
 
   const [row] = await executor
     .update(job)

@@ -16,6 +16,8 @@ import { JOB_PRIORITIES } from './create-job.dto.js';
 export const JOB_STATUSES = [
   'DRAFT',
   'CONFIRMED',
+  'EN_ROUTE',
+  'ARRIVED',
   'IN_PROGRESS',
   'COMPLETED',
   'CANCELLED',
@@ -56,7 +58,7 @@ export class UpdateJobDto {
   @IsOptional()
   @IsIn(JOB_STATUSES, {
     message:
-      'Status must be DRAFT, CONFIRMED, IN_PROGRESS, COMPLETED, or CANCELLED',
+      'Status must be DRAFT, CONFIRMED, EN_ROUTE, ARRIVED, IN_PROGRESS, COMPLETED, or CANCELLED',
   })
   status?: (typeof JOB_STATUSES)[number];
 

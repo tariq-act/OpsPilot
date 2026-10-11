@@ -97,3 +97,16 @@ export {
   updateAssignmentStatusInOrganization,
 } from './job-assignments.js';
 export type { CreateJobAssignmentInput } from './job-assignments.js';
+export { createJobNote, listNotesForJob } from './job-notes.js';
+export type { CreateJobNoteInput } from './job-notes.js';
+export {
+  createJobPhoto,
+  findPhotoInOrganization,
+  listPhotosForJob,
+} from './job-photos.js';
+export type { CreateJobPhotoInput } from './job-photos.js';
+export {
+  createJobActivity,
+  listActivitiesForJob,
+} from './job-activities.js';
+export type { CreateJobActivityInput } from './job-activities.js';

@@ -46,6 +46,10 @@ lerna-debug.log*
 .temp
 .tmp
 
+# Local file storage (job photos)
+/uploads
+uploads/
+
 # Runtime data
 pids
 *.pid
