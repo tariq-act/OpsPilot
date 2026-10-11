@@ -156,3 +156,14 @@ export type {
   CreateCustomerNotificationInput,
   ListNotificationsFilter,
 } from './customer-notifications.js';
+export {
+  createCustomerFollowUp,
+  findFollowUpInOrganization,
+  listFollowUpsForOrganization,
+  updateFollowUpInOrganization,
+} from './customer-follow-ups.js';
+export type {
+  CreateCustomerFollowUpInput,
+  ListFollowUpsFilter,
+  UpdateCustomerFollowUpInput,
+} from './customer-follow-ups.js';

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import {
+  createCustomerFollowUp,
   createCustomerNotification,
   findActiveMembership,
   findCustomerInOrganization,
@@ -44,6 +45,10 @@ export type NotifyCustomerEventInput = {
   payload: Record<string, unknown>;
   /** Defaults to EMAIL when customer has email, otherwise SMS. */
   channel?: NotificationChannel;
+  /** System actor used when auto-creating follow-ups. */
+  actorUserId?: string;
+  /** When set with JOB_COMPLETED, creates a FEEDBACK follow-up. */
+  jobId?: string;
 };
 
 function toNotificationDto(row: CustomerNotification) {
@@ -151,6 +156,36 @@ export class CustomerNotificationsService {
     });
 
     this.queue.enqueue(created.id);
+
+    if (
+      input.eventType === 'JOB_COMPLETED' &&
+      input.jobId &&
+      input.actorUserId
+    ) {
+      const dueAt = new Date();
+      dueAt.setDate(dueAt.getDate() + 3);
+      try {
+        await createCustomerFollowUp({
+          id: randomUUID(),
+          organizationId: input.organizationId,
+          customerId: input.customerId,
+          jobId: input.jobId,
+          type: 'FEEDBACK',
+          status: 'PENDING',
+          dueAt,
+          notes: 'Auto-created after job completion',
+          createdBy: input.actorUserId,
+        });
+      } catch (error) {
+        this.logger.warn(
+          `Failed to create feedback follow-up for job ${input.jobId}`,
+        );
+        if (error instanceof Error) {
+          this.logger.warn(error.message);
+        }
+      }
+    }
+
     return created;
   }
 

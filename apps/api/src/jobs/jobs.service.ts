@@ -1438,6 +1438,8 @@ export class JobsService {
         jobId: updated.id,
         completedAt: updated.completedAt?.toISOString() ?? null,
       },
+      actorUserId,
+      jobId: updated.id,
     });
 
     return { job: toJobDto(updated) };

@@ -19,3 +19,4 @@ export * from './job-activity.js';
 export * from './invoice.js';
 export * from './payment.js';
 export * from './customer-notification.js';
+export * from './customer-follow-up.js';
