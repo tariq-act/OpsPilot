@@ -142,3 +142,17 @@ export {
   updatePaymentStatusInOrganization,
 } from './payments.js';
 export type { CreatePaymentInput } from './payments.js';
+export {
+  claimNotificationForProcessing,
+  createCustomerNotification,
+  findNotificationByIdempotencyKey,
+  findNotificationInOrganization,
+  listNotificationsForOrganization,
+  markNotificationFailed,
+  markNotificationSent,
+  resetNotificationForRetry,
+} from './customer-notifications.js';
+export type {
+  CreateCustomerNotificationInput,
+  ListNotificationsFilter,
+} from './customer-notifications.js';

@@ -35,6 +35,7 @@ import {
   centsToMoneyString,
   parseMoneyToCents,
 } from '../invoices/money.js';
+import { CustomerNotificationsService } from '../notifications/customer-notifications.service.js';
 import type { CreatePaymentDto } from './dto/create-payment.dto.js';
 import { MANUAL_PAYMENT_METHODS } from './dto/create-payment.dto.js';
 
@@ -97,6 +98,10 @@ function sumSucceededCents(rows: Payment[]): bigint {
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
+
+  constructor(
+    private readonly customerNotifications: CustomerNotificationsService,
+  ) {}
 
   async createForInvoice(
     actorUserId: string,
@@ -247,6 +252,22 @@ export class PaymentsService {
 
         return paymentRow;
       });
+
+      if (created.status === 'SUCCEEDED') {
+        await this.customerNotifications.notifyFromEvent({
+          organizationId,
+          customerId: created.customerId,
+          eventType: 'PAYMENT_CONFIRMED',
+          idempotencyKey: `PAYMENT_CONFIRMED:${created.id}`,
+          payload: {
+            paymentId: created.id,
+            invoiceId: created.invoiceId,
+            amount: created.amount,
+            currency: created.currency,
+            method: created.method,
+          },
+        });
+      }
 
       return { payment: toPaymentDto(created) };
     } catch (error) {

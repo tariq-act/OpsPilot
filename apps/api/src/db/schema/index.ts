@@ -18,3 +18,4 @@ export * from './job-photo.js';
 export * from './job-activity.js';
 export * from './invoice.js';
 export * from './payment.js';
+export * from './customer-notification.js';

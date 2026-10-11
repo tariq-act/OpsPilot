@@ -48,6 +48,7 @@ import type {
   OrganizationMember,
   OrganizationMemberRole,
 } from '../db/schema/organization.js';
+import { CustomerNotificationsService } from '../notifications/customer-notifications.service.js';
 import {
   FILE_STORAGE,
   type FileStorage,
@@ -233,6 +234,7 @@ export class JobsService {
 
   constructor(
     @Inject(FILE_STORAGE) private readonly fileStorage: FileStorage,
+    private readonly customerNotifications: CustomerNotificationsService,
   ) {}
 
   async create(
@@ -719,6 +721,18 @@ export class JobsService {
       });
     }
 
+    await this.customerNotifications.notifyFromEvent({
+      organizationId,
+      customerId: updated.customerId,
+      eventType: 'JOB_SCHEDULED',
+      idempotencyKey: `JOB_SCHEDULED:${updated.id}`,
+      payload: {
+        jobId: updated.id,
+        scheduledStart: updated.scheduledStart?.toISOString() ?? null,
+        scheduledEnd: updated.scheduledEnd?.toISOString() ?? null,
+      },
+    });
+
     return { job: toJobDto(updated) };
   }
 
@@ -800,6 +814,18 @@ export class JobsService {
         error: 'Not Found',
       });
     }
+
+    await this.customerNotifications.notifyFromEvent({
+      organizationId,
+      customerId: updated.customerId,
+      eventType: 'JOB_RESCHEDULED',
+      idempotencyKey: `JOB_RESCHEDULED:${updated.id}:${scheduledStart.toISOString()}`,
+      payload: {
+        jobId: updated.id,
+        scheduledStart: updated.scheduledStart?.toISOString() ?? null,
+        scheduledEnd: updated.scheduledEnd?.toISOString() ?? null,
+      },
+    });
 
     return { job: toJobDto(updated) };
   }
@@ -919,6 +945,20 @@ export class JobsService {
         statusCode: 404,
         message: 'Job not found',
         error: 'Not Found',
+      });
+    }
+
+    for (const assignment of assignments) {
+      await this.customerNotifications.notifyFromEvent({
+        organizationId,
+        customerId: jobRow.customerId,
+        eventType: 'TECHNICIAN_ASSIGNED',
+        idempotencyKey: `TECHNICIAN_ASSIGNED:${assignment.id}`,
+        payload: {
+          jobId: jobRow.id,
+          assignmentId: assignment.id,
+          technicianId: assignment.technicianId,
+        },
       });
     }
 
@@ -1388,6 +1428,17 @@ export class JobsService {
         error: 'Not Found',
       });
     }
+
+    await this.customerNotifications.notifyFromEvent({
+      organizationId,
+      customerId: updated.customerId,
+      eventType: 'JOB_COMPLETED',
+      idempotencyKey: `JOB_COMPLETED:${updated.id}`,
+      payload: {
+        jobId: updated.id,
+        completedAt: updated.completedAt?.toISOString() ?? null,
+      },
+    });
 
     return { job: toJobDto(updated) };
   }
