@@ -62,6 +62,15 @@ export type UpdateInvoiceStatusInput = {
   paidAt?: Date | null;
 };
 
+export type UpdateInvoiceBalanceInput = {
+  organizationId: string;
+  invoiceId: string;
+  amountPaid: string;
+  amountDue: string;
+  status: InvoiceStatus;
+  paidAt: Date | null;
+};
+
 export type ListInvoicesFilter = {
   organizationId: string;
   status?: InvoiceStatus;
@@ -307,6 +316,29 @@ export async function updateInvoiceStatusInOrganization(
   const [row] = await executor
     .update(invoice)
     .set(patch)
+    .where(
+      and(
+        eq(invoice.id, input.invoiceId),
+        eq(invoice.organizationId, input.organizationId),
+      ),
+    )
+    .returning();
+
+  return row ?? null;
+}
+
+export async function updateInvoiceBalanceInOrganization(
+  input: UpdateInvoiceBalanceInput,
+  executor: DbExecutor = db,
+): Promise<Invoice | null> {
+  const [row] = await executor
+    .update(invoice)
+    .set({
+      amountPaid: input.amountPaid,
+      amountDue: input.amountDue,
+      status: input.status,
+      paidAt: input.paidAt,
+    })
     .where(
       and(
         eq(invoice.id, input.invoiceId),

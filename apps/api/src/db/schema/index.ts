@@ -17,3 +17,4 @@ export * from './job-note.js';
 export * from './job-photo.js';
 export * from './job-activity.js';
 export * from './invoice.js';
+export * from './payment.js';

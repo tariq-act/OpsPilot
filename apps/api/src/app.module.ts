@@ -9,6 +9,7 @@ import { CustomersModule } from './customers/customers.module.js';
 import { InvoicesModule } from './invoices/invoices.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { JobsModule } from './jobs/jobs.module.js';
+import { PaymentsModule } from './payments/payments.module.js';
 import { ServiceRequestsModule } from './service-requests/service-requests.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { TechniciansModule } from './technicians/technicians.module.js';
@@ -26,6 +27,7 @@ import { TechniciansModule } from './technicians/technicians.module.js';
     JobsModule,
     TechniciansModule,
     InvoicesModule,
+    PaymentsModule,
     HealthModule,
   ],
   controllers: [AppController],

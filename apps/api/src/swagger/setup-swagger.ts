@@ -42,6 +42,10 @@ export function setupSwagger(app: INestApplication): void {
       'Invoices',
       'Invoices for completed jobs: create, send, void, and list',
     )
+    .addTag(
+      'Payments',
+      'Manual payment recording, listing, and refunds against invoices',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

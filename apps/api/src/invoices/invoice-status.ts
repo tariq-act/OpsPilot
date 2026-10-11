@@ -2,15 +2,15 @@ import type { InvoiceStatus } from '../db/schema/invoice.js';
 
 /**
  * Allowed invoice status moves for API actions.
- * Payment-driven moves (PARTIALLY_PAID / PAID) are reserved for a later payments feature.
- * OVERDUE is applied lazily when a SENT invoice is past dueAt.
+ * Payment/refund moves adjust PARTIALLY_PAID / PAID / SENT / OVERDUE.
+ * OVERDUE is also applied lazily when a SENT invoice is past dueAt.
  */
 const ALLOWED_TRANSITIONS: Record<InvoiceStatus, readonly InvoiceStatus[]> = {
   DRAFT: ['SENT', 'VOID'],
   SENT: ['OVERDUE', 'PARTIALLY_PAID', 'PAID', 'VOID'],
   OVERDUE: ['PARTIALLY_PAID', 'PAID', 'VOID'],
-  PARTIALLY_PAID: ['PAID', 'VOID'],
-  PAID: [],
+  PARTIALLY_PAID: ['PAID', 'SENT', 'OVERDUE', 'VOID'],
+  PAID: ['PARTIALLY_PAID', 'SENT', 'OVERDUE'],
   VOID: [],
 };
 
