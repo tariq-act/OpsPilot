@@ -10,10 +10,13 @@ export class JobDto {
   priority!: JobPriority;
   status!: JobStatus;
   location!: string | null;
+  scheduledStart!: Date | null;
+  scheduledEnd!: Date | null;
   estimatedDuration!: number | null;
   actualStart!: Date | null;
   actualEnd!: Date | null;
   completedAt!: Date | null;
+  completionSummary!: string | null;
   createdBy!: string;
   createdAt!: Date;
   updatedAt!: Date;

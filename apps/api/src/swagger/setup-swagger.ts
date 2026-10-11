@@ -33,7 +33,10 @@ export function setupSwagger(app: INestApplication): void {
     .addTag('Invitations', 'Accept a team invitation')
     .addTag('Customers', 'Organization customer records')
     .addTag('Service Requests', 'Customer service request intake')
-    .addTag('Jobs', 'Operational jobs from accepted service requests')
+    .addTag(
+      'Jobs',
+      'Operational jobs: create, schedule, assign, execute, and complete',
+    )
     .addTag('Technicians', 'Organization technician profiles')
     .build();
 

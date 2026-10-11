@@ -14,7 +14,9 @@ import { serviceRequest } from './service-request.js';
 
 /**
  * Operational jobs (usually created from an ACCEPTED service request).
- * Scheduling and technician assignment come later. Soft-cancel via status.
+ * Schedule window: scheduledStart / scheduledEnd + location.
+ * Technicians are linked via job_assignment (not denormalized here).
+ * Soft-cancel via status.
  */
 
 export const jobPriorityEnum = pgEnum('job_priority', [
@@ -27,6 +29,8 @@ export const jobPriorityEnum = pgEnum('job_priority', [
 export const jobStatusEnum = pgEnum('job_status', [
   'DRAFT',
   'CONFIRMED',
+  'EN_ROUTE',
+  'ARRIVED',
   'IN_PROGRESS',
   'COMPLETED',
   'CANCELLED',
@@ -50,10 +54,13 @@ export const job = pgTable.withRLS(
     priority: jobPriorityEnum('priority').default('MEDIUM').notNull(),
     status: jobStatusEnum('status').default('DRAFT').notNull(),
     location: text('location'),
+    scheduledStart: timestamp('scheduled_start'),
+    scheduledEnd: timestamp('scheduled_end'),
     estimatedDuration: integer('estimated_duration'),
     actualStart: timestamp('actual_start'),
     actualEnd: timestamp('actual_end'),
     completedAt: timestamp('completed_at'),
+    completionSummary: text('completion_summary'),
     createdBy: text('created_by')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
@@ -70,6 +77,7 @@ export const job = pgTable.withRLS(
     index('job_customerId_idx').on(table.customerId),
     index('job_status_idx').on(table.status),
     index('job_priority_idx').on(table.priority),
+    index('job_scheduledStart_idx').on(table.scheduledStart),
     index('job_createdAt_idx').on(table.createdAt),
   ],
 );

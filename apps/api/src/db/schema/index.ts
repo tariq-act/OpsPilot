@@ -12,3 +12,7 @@ export * from './customer.js';
 export * from './service-request.js';
 export * from './job.js';
 export * from './technician.js';
+export * from './job-assignment.js';
+export * from './job-note.js';
+export * from './job-photo.js';
+export * from './job-activity.js';
