@@ -110,3 +110,35 @@ export {
   listActivitiesForJob,
 } from './job-activities.js';
 export type { CreateJobActivityInput } from './job-activities.js';
+export {
+  createInvoice,
+  createInvoiceItems,
+  deleteInvoiceItemsForInvoice,
+  findActiveInvoiceForJob,
+  findInvoiceInOrganization,
+  findOrganizationCurrency,
+  listInvoicesForOrganization,
+  listItemsForInvoice,
+  listItemsForInvoices,
+  nextInvoiceNumber,
+  updateInvoiceBalanceInOrganization,
+  updateInvoiceStatusInOrganization,
+  updateInvoiceTotalsInOrganization,
+} from './invoices.js';
+export type {
+  CreateInvoiceInput,
+  CreateInvoiceItemInput,
+  ListInvoicesFilter,
+  UpdateInvoiceBalanceInput,
+  UpdateInvoiceStatusInput,
+  UpdateInvoiceTotalsInput,
+} from './invoices.js';
+export {
+  createPayment,
+  findPaymentByTransactionId,
+  findPaymentInOrganization,
+  listPaymentsForInvoice,
+  listSucceededPaymentsForInvoice,
+  updatePaymentStatusInOrganization,
+} from './payments.js';
+export type { CreatePaymentInput } from './payments.js';
