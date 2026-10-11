@@ -110,3 +110,24 @@ export {
   listActivitiesForJob,
 } from './job-activities.js';
 export type { CreateJobActivityInput } from './job-activities.js';
+export {
+  createInvoice,
+  createInvoiceItems,
+  deleteInvoiceItemsForInvoice,
+  findActiveInvoiceForJob,
+  findInvoiceInOrganization,
+  findOrganizationCurrency,
+  listInvoicesForOrganization,
+  listItemsForInvoice,
+  listItemsForInvoices,
+  nextInvoiceNumber,
+  updateInvoiceStatusInOrganization,
+  updateInvoiceTotalsInOrganization,
+} from './invoices.js';
+export type {
+  CreateInvoiceInput,
+  CreateInvoiceItemInput,
+  ListInvoicesFilter,
+  UpdateInvoiceStatusInput,
+  UpdateInvoiceTotalsInput,
+} from './invoices.js';

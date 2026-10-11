@@ -38,6 +38,10 @@ export function setupSwagger(app: INestApplication): void {
       'Operational jobs: create, schedule, assign, execute, and complete',
     )
     .addTag('Technicians', 'Organization technician profiles')
+    .addTag(
+      'Invoices',
+      'Invoices for completed jobs: create, send, void, and list',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
