@@ -18,7 +18,7 @@ export class ListJobsQueryDto {
   @IsOptional()
   @IsIn(JOB_STATUSES, {
     message:
-      'Status must be DRAFT, CONFIRMED, IN_PROGRESS, COMPLETED, or CANCELLED',
+      'Status must be DRAFT, CONFIRMED, EN_ROUTE, ARRIVED, IN_PROGRESS, COMPLETED, or CANCELLED',
   })
   status?: (typeof JOB_STATUSES)[number];
 

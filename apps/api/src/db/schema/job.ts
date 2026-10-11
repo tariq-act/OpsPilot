@@ -29,6 +29,8 @@ export const jobPriorityEnum = pgEnum('job_priority', [
 export const jobStatusEnum = pgEnum('job_status', [
   'DRAFT',
   'CONFIRMED',
+  'EN_ROUTE',
+  'ARRIVED',
   'IN_PROGRESS',
   'COMPLETED',
   'CANCELLED',
@@ -58,6 +60,7 @@ export const job = pgTable.withRLS(
     actualStart: timestamp('actual_start'),
     actualEnd: timestamp('actual_end'),
     completedAt: timestamp('completed_at'),
+    completionSummary: text('completion_summary'),
     createdBy: text('created_by')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),

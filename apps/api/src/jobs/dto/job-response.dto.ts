@@ -16,6 +16,7 @@ export class JobDto {
   actualStart!: Date | null;
   actualEnd!: Date | null;
   completedAt!: Date | null;
+  completionSummary!: string | null;
   createdBy!: string;
   createdAt!: Date;
   updatedAt!: Date;
