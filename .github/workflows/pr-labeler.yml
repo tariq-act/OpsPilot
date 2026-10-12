@@ -16,3 +16,5 @@ jobs:
     steps:
       - name: Apply PR Labels
         uses: actions/labeler@v5
+        with:
+          configuration-path: .github/labeler.yml
