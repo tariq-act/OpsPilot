@@ -40,6 +40,7 @@ import {
   isImmutableStatus,
   isVoidableStatus,
 } from './invoice-status.js';
+import { CustomerNotificationsService } from '../notifications/customer-notifications.service.js';
 import {
   calculateInvoiceTotals,
   lineAmountCents,
@@ -111,6 +112,10 @@ type ComputedLine = {
 @Injectable()
 export class InvoicesService {
   private readonly logger = new Logger(InvoicesService.name);
+
+  constructor(
+    private readonly customerNotifications: CustomerNotificationsService,
+  ) {}
 
   async create(
     actorUserId: string,
@@ -560,6 +565,19 @@ export class InvoicesService {
         error: 'Not Found',
       });
     }
+
+    await this.customerNotifications.notifyFromEvent({
+      organizationId,
+      customerId: updated.customerId,
+      eventType: 'INVOICE_SENT',
+      idempotencyKey: `INVOICE_SENT:${updated.id}`,
+      payload: {
+        invoiceId: updated.id,
+        invoiceNumber: updated.invoiceNumber,
+        total: updated.total,
+        currency: updated.currency,
+      },
+    });
 
     return { invoice: toInvoiceDto(updated, items) };
   }

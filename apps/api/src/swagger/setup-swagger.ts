@@ -46,6 +46,14 @@ export function setupSwagger(app: INestApplication): void {
       'Payments',
       'Manual payment recording, listing, and refunds against invoices',
     )
+    .addTag(
+      'Notifications',
+      'Customer notification history and failed-delivery retries',
+    )
+    .addTag(
+      'Follow-ups',
+      'Post-service feedback and maintenance reminder follow-ups',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
