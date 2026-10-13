@@ -49,6 +49,7 @@ import type {
   OrganizationMemberRole,
 } from '../db/schema/organization.js';
 import { CustomerNotificationsService } from '../notifications/customer-notifications.service.js';
+import { AutomationIngressService } from '../automation/automation-ingress.service.js';
 import {
   FILE_STORAGE,
   type FileStorage,
@@ -235,6 +236,7 @@ export class JobsService {
   constructor(
     @Inject(FILE_STORAGE) private readonly fileStorage: FileStorage,
     private readonly customerNotifications: CustomerNotificationsService,
+    private readonly automationIngress: AutomationIngressService,
   ) {}
 
   async create(
@@ -1440,6 +1442,16 @@ export class JobsService {
       },
       actorUserId,
       jobId: updated.id,
+    });
+
+    await this.automationIngress.accept({
+      organizationId,
+      triggerEvent: 'JOB_COMPLETED',
+      eventId: updated.id,
+      context: {
+        customerId: updated.customerId,
+        jobId: updated.id,
+      },
     });
 
     return { job: toJobDto(updated) };

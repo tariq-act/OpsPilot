@@ -22,6 +22,6 @@ import { NOTIFICATION_PROVIDERS } from './providers/notification-provider.js';
     CustomerNotificationsService,
     FollowUpsService,
   ],
-  exports: [CustomerNotificationsService],
+  exports: [CustomerNotificationsService, FollowUpsService],
 })
 export class NotificationsModule {}

@@ -14,6 +14,8 @@ export const NOTIFICATION_EVENT_TYPES = [
   'JOB_COMPLETED',
   'INVOICE_SENT',
   'PAYMENT_CONFIRMED',
+  'PAYMENT_REMINDER',
+  'FOLLOW_UP_DUE',
 ] as const;
 
 export const NOTIFICATION_CHANNELS = ['EMAIL', 'SMS', 'WHATSAPP'] as const;

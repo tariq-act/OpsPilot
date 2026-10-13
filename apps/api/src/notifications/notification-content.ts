@@ -53,5 +53,17 @@ export function buildNotificationContent(
         body: `We received your payment of ${amount}. Thank you.`,
       };
     }
+    case 'PAYMENT_REMINDER': {
+      const number = asString(payload.invoiceNumber, 'your invoice');
+      return {
+        subject: 'Payment reminder',
+        body: `Invoice ${number} is awaiting payment.`,
+      };
+    }
+    case 'FOLLOW_UP_DUE':
+      return {
+        subject: 'Follow-up for your service',
+        body: 'A follow-up is due for your recent service.',
+      };
   }
 }

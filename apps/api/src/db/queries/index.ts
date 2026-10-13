@@ -167,3 +167,28 @@ export type {
   ListFollowUpsFilter,
   UpdateCustomerFollowUpInput,
 } from './customer-follow-ups.js';
+export {
+  claimAutomationExecution,
+  createAutomationRule,
+  findAutomationRuleById,
+  findAutomationRuleInOrganization,
+  insertAutomationExecutionIfAbsent,
+  listActiveAutomationRulesByTrigger,
+  listAutomationExecutionsForRule,
+  listAutomationRulesForOrganization,
+  listDueFollowUpsForAutomation,
+  markAutomationExecutionFailed,
+  markAutomationExecutionPending,
+  markAutomationExecutionSucceeded,
+  releaseStaleRunningExecutions,
+  saveAutomationExecutionProgress,
+  updateAutomationRuleInOrganization,
+} from './automation.js';
+export type {
+  CreateAutomationExecutionInput,
+  CreateAutomationRuleInput,
+  DueFollowUpForAutomation,
+  ListAutomationExecutionsFilter,
+  ListAutomationRulesFilter,
+  UpdateAutomationRuleInput,
+} from './automation.js';
