@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule as BetterAuthModule } from '@thallesp/nestjs-better-auth';
+import { AutomationModule } from './automation/automation.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -30,6 +31,7 @@ import { TechniciansModule } from './technicians/technicians.module.js';
     InvoicesModule,
     PaymentsModule,
     NotificationsModule,
+    AutomationModule,
     HealthModule,
   ],
   controllers: [AppController],

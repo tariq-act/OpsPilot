@@ -36,6 +36,7 @@ import {
   parseMoneyToCents,
 } from '../invoices/money.js';
 import { CustomerNotificationsService } from '../notifications/customer-notifications.service.js';
+import { AutomationIngressService } from '../automation/automation-ingress.service.js';
 import type { CreatePaymentDto } from './dto/create-payment.dto.js';
 import { MANUAL_PAYMENT_METHODS } from './dto/create-payment.dto.js';
 
@@ -101,6 +102,7 @@ export class PaymentsService {
 
   constructor(
     private readonly customerNotifications: CustomerNotificationsService,
+    private readonly automationIngress: AutomationIngressService,
   ) {}
 
   async createForInvoice(
@@ -263,6 +265,20 @@ export class PaymentsService {
             paymentId: created.id,
             invoiceId: created.invoiceId,
             amount: created.amount,
+            currency: created.currency,
+            method: created.method,
+          },
+        });
+
+        await this.automationIngress.accept({
+          organizationId,
+          triggerEvent: 'PAYMENT_RECEIVED',
+          eventId: created.id,
+          context: {
+            customerId: created.customerId,
+            jobId: invoice.jobId,
+            invoiceId: created.invoiceId,
+            paymentId: created.id,
             currency: created.currency,
             method: created.method,
           },

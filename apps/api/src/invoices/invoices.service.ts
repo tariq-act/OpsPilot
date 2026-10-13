@@ -41,6 +41,7 @@ import {
   isVoidableStatus,
 } from './invoice-status.js';
 import { CustomerNotificationsService } from '../notifications/customer-notifications.service.js';
+import { AutomationIngressService } from '../automation/automation-ingress.service.js';
 import {
   calculateInvoiceTotals,
   lineAmountCents,
@@ -115,6 +116,7 @@ export class InvoicesService {
 
   constructor(
     private readonly customerNotifications: CustomerNotificationsService,
+    private readonly automationIngress: AutomationIngressService,
   ) {}
 
   async create(
@@ -575,6 +577,18 @@ export class InvoicesService {
         invoiceId: updated.id,
         invoiceNumber: updated.invoiceNumber,
         total: updated.total,
+        currency: updated.currency,
+      },
+    });
+
+    await this.automationIngress.accept({
+      organizationId,
+      triggerEvent: 'INVOICE_SENT',
+      eventId: updated.id,
+      context: {
+        customerId: updated.customerId,
+        jobId: updated.jobId,
+        invoiceId: updated.id,
         currency: updated.currency,
       },
     });

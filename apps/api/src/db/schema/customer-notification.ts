@@ -23,6 +23,8 @@ export const notificationEventTypeEnum = pgEnum('notification_event_type', [
   'JOB_COMPLETED',
   'INVOICE_SENT',
   'PAYMENT_CONFIRMED',
+  'PAYMENT_REMINDER',
+  'FOLLOW_UP_DUE',
 ]);
 
 export const notificationChannelEnum = pgEnum('notification_channel', [
