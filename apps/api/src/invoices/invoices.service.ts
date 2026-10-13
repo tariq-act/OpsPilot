@@ -42,6 +42,8 @@ import {
 } from './invoice-status.js';
 import { CustomerNotificationsService } from '../notifications/customer-notifications.service.js';
 import { AutomationIngressService } from '../automation/automation-ingress.service.js';
+import { AuditAction, AuditEntityType } from '../audit/audit.actions.js';
+import { AuditService } from '../audit/audit.service.js';
 import {
   calculateInvoiceTotals,
   lineAmountCents,
@@ -117,6 +119,7 @@ export class InvoicesService {
   constructor(
     private readonly customerNotifications: CustomerNotificationsService,
     private readonly automationIngress: AutomationIngressService,
+    private readonly audit: AuditService,
   ) {}
 
   async create(
@@ -248,6 +251,21 @@ export class InvoicesService {
         );
 
         return { row, items };
+      });
+
+      await this.audit.record({
+        organizationId,
+        actorUserId,
+        action: AuditAction.INVOICE_CREATED,
+        entityType: AuditEntityType.INVOICE,
+        entityId: created.row.id,
+        metadata: {
+          invoiceNumber: created.row.invoiceNumber,
+          status: created.row.status,
+          total: created.row.total,
+          jobId: created.row.jobId,
+          customerId: created.row.customerId,
+        },
       });
 
       return { invoice: toInvoiceDto(created.row, created.items) };
@@ -593,6 +611,21 @@ export class InvoicesService {
       },
     });
 
+    await this.audit.record({
+      organizationId,
+      actorUserId,
+      action: AuditAction.INVOICE_SENT,
+      entityType: AuditEntityType.INVOICE,
+      entityId: updated.id,
+      metadata: {
+        invoiceNumber: updated.invoiceNumber,
+        status: updated.status,
+        total: updated.total,
+        jobId: updated.jobId,
+        customerId: updated.customerId,
+      },
+    });
+
     return { invoice: toInvoiceDto(updated, items) };
   }
 
@@ -641,6 +674,21 @@ export class InvoicesService {
         error: 'Not Found',
       });
     }
+
+    await this.audit.recordCritical({
+      organizationId,
+      actorUserId,
+      action: AuditAction.INVOICE_VOIDED,
+      entityType: AuditEntityType.INVOICE,
+      entityId: updated.id,
+      metadata: {
+        before: { status: existing.status },
+        after: { status: updated.status },
+        invoiceNumber: updated.invoiceNumber,
+        jobId: updated.jobId,
+        customerId: updated.customerId,
+      },
+    });
 
     const items = await listItemsForInvoice(updated.id);
     return { invoice: toInvoiceDto(updated, items) };

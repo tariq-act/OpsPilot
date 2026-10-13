@@ -50,6 +50,8 @@ import type {
 } from '../db/schema/organization.js';
 import { CustomerNotificationsService } from '../notifications/customer-notifications.service.js';
 import { AutomationIngressService } from '../automation/automation-ingress.service.js';
+import { AuditAction, AuditEntityType } from '../audit/audit.actions.js';
+import { AuditService } from '../audit/audit.service.js';
 import {
   FILE_STORAGE,
   type FileStorage,
@@ -237,6 +239,7 @@ export class JobsService {
     @Inject(FILE_STORAGE) private readonly fileStorage: FileStorage,
     private readonly customerNotifications: CustomerNotificationsService,
     private readonly automationIngress: AutomationIngressService,
+    private readonly audit: AuditService,
   ) {}
 
   async create(
@@ -307,6 +310,22 @@ export class JobsService {
         location: dto.location ?? null,
         estimatedDuration: dto.estimatedDuration ?? null,
         createdBy: actorUserId,
+      });
+
+      await this.audit.record({
+        organizationId,
+        actorUserId,
+        action: AuditAction.JOB_CREATED,
+        entityType: AuditEntityType.JOB,
+        entityId: created.id,
+        metadata: {
+          after: {
+            customerId: created.customerId,
+            requestId: created.requestId,
+            status: created.status,
+            priority: created.priority,
+          },
+        },
       });
 
       return { job: toJobDto(created) };
@@ -591,6 +610,20 @@ export class JobsService {
       });
     }
 
+    if (dto.status !== undefined && dto.status !== existing.status) {
+      await this.audit.record({
+        organizationId,
+        actorUserId,
+        action: AuditAction.JOB_STATUS_CHANGED,
+        entityType: AuditEntityType.JOB,
+        entityId: updated.id,
+        metadata: {
+          before: { status: existing.status },
+          after: { status: updated.status },
+        },
+      });
+    }
+
     return { job: toJobDto(updated) };
   }
 
@@ -658,6 +691,18 @@ export class JobsService {
         error: 'Not Found',
       });
     }
+
+    await this.audit.record({
+      organizationId,
+      actorUserId,
+      action: AuditAction.JOB_CANCELLED,
+      entityType: AuditEntityType.JOB,
+      entityId: updated.id,
+      metadata: {
+        before: { status: existing.status },
+        after: { status: updated.status },
+      },
+    });
 
     return { job: toJobDto(updated) };
   }
@@ -732,6 +777,19 @@ export class JobsService {
         jobId: updated.id,
         scheduledStart: updated.scheduledStart?.toISOString() ?? null,
         scheduledEnd: updated.scheduledEnd?.toISOString() ?? null,
+      },
+    });
+
+    await this.audit.record({
+      organizationId,
+      actorUserId,
+      action: AuditAction.JOB_SCHEDULED,
+      entityType: AuditEntityType.JOB,
+      entityId: updated.id,
+      metadata: {
+        scheduledStart: updated.scheduledStart?.toISOString() ?? null,
+        scheduledEnd: updated.scheduledEnd?.toISOString() ?? null,
+        status: updated.status,
       },
     });
 
@@ -963,6 +1021,17 @@ export class JobsService {
         },
       });
     }
+
+    await this.audit.record({
+      organizationId,
+      actorUserId,
+      action: AuditAction.JOB_ASSIGNED,
+      entityType: AuditEntityType.JOB,
+      entityId: jobId,
+      metadata: {
+        technicianIds: assignments.map((a) => a.technicianId),
+      },
+    });
 
     return {
       job: toJobDto(jobRow),
@@ -1451,6 +1520,19 @@ export class JobsService {
       context: {
         customerId: updated.customerId,
         jobId: updated.id,
+      },
+    });
+
+    await this.audit.record({
+      organizationId,
+      actorUserId,
+      action: AuditAction.JOB_COMPLETED,
+      entityType: AuditEntityType.JOB,
+      entityId: updated.id,
+      metadata: {
+        before: { status: existing.status },
+        after: { status: updated.status },
+        completedAt: updated.completedAt?.toISOString() ?? null,
       },
     });
 

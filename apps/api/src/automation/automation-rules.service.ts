@@ -27,6 +27,8 @@ import type { CreateAutomationRuleDto } from './dto/create-automation-rule.dto.j
 import type { ListAutomationExecutionsQueryDto } from './dto/list-automation-query.dto.js';
 import type { ListAutomationRulesQueryDto } from './dto/list-automation-query.dto.js';
 import type { UpdateAutomationRuleDto } from './dto/update-automation-rule.dto.js';
+import { AuditAction, AuditEntityType } from '../audit/audit.actions.js';
+import { AuditService } from '../audit/audit.service.js';
 
 const AUTOMATION_MANAGER_ROLES = [
   'OWNER',
@@ -77,6 +79,8 @@ function toExecutionDto(row: AutomationExecution) {
 export class AutomationRulesService {
   private readonly logger = new Logger(AutomationRulesService.name);
 
+  constructor(private readonly audit: AuditService) {}
+
   async create(
     actorUserId: string,
     organizationId: string,
@@ -97,6 +101,20 @@ export class AutomationRulesService {
         isActive: dto.isActive ?? true,
         createdBy: actorUserId,
       });
+
+      await this.audit.record({
+        organizationId,
+        actorUserId,
+        action: AuditAction.AUTOMATION_RULE_CREATED,
+        entityType: AuditEntityType.AUTOMATION_RULE,
+        entityId: created.id,
+        metadata: {
+          name: created.name,
+          triggerEvent: created.triggerEvent,
+          isActive: created.isActive,
+        },
+      });
+
       return { rule: toRuleDto(created) };
     } catch (error) {
       this.rethrowKnown(error);
@@ -165,6 +183,20 @@ export class AutomationRulesService {
           error: 'Not Found',
         });
       }
+
+      await this.audit.record({
+        organizationId,
+        actorUserId,
+        action: AuditAction.AUTOMATION_RULE_UPDATED,
+        entityType: AuditEntityType.AUTOMATION_RULE,
+        entityId: updated.id,
+        metadata: {
+          name: updated.name,
+          triggerEvent: updated.triggerEvent,
+          isActive: updated.isActive,
+        },
+      });
+
       return { rule: toRuleDto(updated) };
     } catch (error) {
       this.rethrowKnown(error);
@@ -184,7 +216,7 @@ export class AutomationRulesService {
     isActive: boolean,
   ) {
     await this.requireManager(organizationId, actorUserId);
-    await this.requireRule(organizationId, ruleId);
+    const existing = await this.requireRule(organizationId, ruleId);
     const updated = await updateAutomationRuleInOrganization({
       organizationId,
       ruleId,
@@ -197,6 +229,23 @@ export class AutomationRulesService {
         error: 'Not Found',
       });
     }
+
+    await this.audit.record({
+      organizationId,
+      actorUserId,
+      action: isActive
+        ? AuditAction.AUTOMATION_RULE_ACTIVATED
+        : AuditAction.AUTOMATION_RULE_DEACTIVATED,
+      entityType: AuditEntityType.AUTOMATION_RULE,
+      entityId: updated.id,
+      metadata: {
+        name: updated.name,
+        triggerEvent: updated.triggerEvent,
+        before: { isActive: existing.isActive },
+        after: { isActive: updated.isActive },
+      },
+    });
+
     return { rule: toRuleDto(updated) };
   }
 

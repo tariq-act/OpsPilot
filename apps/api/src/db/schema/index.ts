@@ -21,3 +21,4 @@ export * from './payment.js';
 export * from './customer-notification.js';
 export * from './customer-follow-up.js';
 export * from './automation.js';
+export * from './audit-log.js';

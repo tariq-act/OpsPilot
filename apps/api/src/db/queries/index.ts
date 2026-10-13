@@ -218,3 +218,12 @@ export type {
   RevenueTrendPeriod,
   TechnicianWorkloadRow,
 } from './analytics.js';
+export {
+  findAuditLogInOrganization,
+  insertAuditLog,
+  listAuditLogsForOrganization,
+} from './audit.js';
+export type {
+  CreateAuditLogInput,
+  ListAuditLogsFilter,
+} from './audit.js';

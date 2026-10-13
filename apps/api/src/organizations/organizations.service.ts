@@ -27,6 +27,8 @@ import {
   createOrganizationWithOwner,
   listOrganizationsForUser,
 } from '../db/queries/organizations.js';
+import { AuditAction, AuditEntityType } from '../audit/audit.actions.js';
+import { AuditService } from '../audit/audit.service.js';
 import type { CreateInvitationDto } from './dto/create-invitation.dto.js';
 import type { CreateOrganizationDto } from './dto/create-organization.dto.js';
 import type { UpdateMemberDto } from './dto/update-member.dto.js';
@@ -57,6 +59,8 @@ function uniqueConstraintName(error: unknown): string {
 export class OrganizationsService {
   private readonly logger = new Logger(OrganizationsService.name);
 
+  constructor(private readonly audit: AuditService) {}
+
   async create(userId: string, dto: CreateOrganizationDto) {
     try {
       const result = await createOrganizationWithOwner(
@@ -75,6 +79,21 @@ export class OrganizationsService {
           userId,
         },
       );
+
+      await this.audit.recordCritical({
+        organizationId: result.organization.id,
+        actorUserId: userId,
+        action: AuditAction.ORGANIZATION_CREATED,
+        entityType: AuditEntityType.ORGANIZATION,
+        entityId: result.organization.id,
+        metadata: {
+          after: {
+            slug: result.organization.slug,
+            timezone: result.organization.timezone,
+            currency: result.organization.currency,
+          },
+        },
+      });
 
       return {
         organization: result.organization,
@@ -161,6 +180,21 @@ export class OrganizationsService {
         expiresAt: new Date(Date.now() + INVITATION_TTL_MS),
       });
 
+      await this.audit.recordCritical({
+        organizationId,
+        actorUserId: actorUserId,
+        action: AuditAction.INVITATION_CREATED,
+        entityType: AuditEntityType.INVITATION,
+        entityId: invitation.id,
+        metadata: {
+          after: {
+            role: invitation.role,
+            status: invitation.status,
+            expiresAt: invitation.expiresAt.toISOString(),
+          },
+        },
+      });
+
       return {
         invitation: {
           id: invitation.id,
@@ -244,6 +278,19 @@ export class OrganizationsService {
       });
     }
 
+    await this.audit.recordCritical({
+      organizationId,
+      actorUserId: actorUserId,
+      action: AuditAction.MEMBER_UPDATED,
+      entityType: AuditEntityType.MEMBER,
+      entityId: updated.id,
+      metadata: {
+        before: { role: target.role, status: target.status },
+        after: { role: updated.role, status: updated.status },
+        targetUserId: updated.userId,
+      },
+    });
+
     return {
       member: {
         id: updated.id,
@@ -296,6 +343,21 @@ export class OrganizationsService {
         error: 'Not Found',
       });
     }
+
+    await this.audit.recordCritical({
+      organizationId,
+      actorUserId: actorUserId,
+      action: AuditAction.MEMBER_REMOVED,
+      entityType: AuditEntityType.MEMBER,
+      entityId: memberId,
+      metadata: {
+        before: {
+          role: target.role,
+          status: target.status,
+          targetUserId: target.userId,
+        },
+      },
+    });
 
     return { success: true };
   }
@@ -366,6 +428,21 @@ export class OrganizationsService {
         userId: actorUserId,
         role: invitation.role as InvitableRole,
         membershipId: randomUUID(),
+      });
+
+      await this.audit.recordCritical({
+        organizationId: invitation.organizationId,
+        actorUserId: actorUserId,
+        action: AuditAction.INVITATION_ACCEPTED,
+        entityType: AuditEntityType.INVITATION,
+        entityId: invitation.id,
+        metadata: {
+          after: {
+            membershipId: result.membership.id,
+            role: result.membership.role,
+            status: result.membership.status,
+          },
+        },
       });
 
       return {
