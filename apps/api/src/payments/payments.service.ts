@@ -37,6 +37,8 @@ import {
 } from '../invoices/money.js';
 import { CustomerNotificationsService } from '../notifications/customer-notifications.service.js';
 import { AutomationIngressService } from '../automation/automation-ingress.service.js';
+import { AuditAction, AuditEntityType } from '../audit/audit.actions.js';
+import { AuditService } from '../audit/audit.service.js';
 import type { CreatePaymentDto } from './dto/create-payment.dto.js';
 import { MANUAL_PAYMENT_METHODS } from './dto/create-payment.dto.js';
 
@@ -103,6 +105,7 @@ export class PaymentsService {
   constructor(
     private readonly customerNotifications: CustomerNotificationsService,
     private readonly automationIngress: AutomationIngressService,
+    private readonly audit: AuditService,
   ) {}
 
   async createForInvoice(
@@ -283,6 +286,21 @@ export class PaymentsService {
             method: created.method,
           },
         });
+
+        await this.audit.recordCritical({
+          organizationId,
+          actorUserId,
+          action: AuditAction.PAYMENT_RECORDED,
+          entityType: AuditEntityType.PAYMENT,
+          entityId: created.id,
+          metadata: {
+            amount: created.amount,
+            currency: created.currency,
+            method: created.method,
+            status: created.status,
+            invoiceId: created.invoiceId,
+          },
+        });
       }
 
       return { payment: toPaymentDto(created) };
@@ -435,6 +453,21 @@ export class PaymentsService {
 
         await this.applySucceededBalance(organizationId, invoice, tx);
         return paymentRow;
+      });
+
+      await this.audit.recordCritical({
+        organizationId,
+        actorUserId,
+        action: AuditAction.PAYMENT_REFUNDED,
+        entityType: AuditEntityType.PAYMENT,
+        entityId: refunded.id,
+        metadata: {
+          amount: refunded.amount,
+          currency: refunded.currency,
+          method: refunded.method,
+          status: refunded.status,
+          invoiceId: refunded.invoiceId,
+        },
       });
 
       return { payment: toPaymentDto(refunded) };

@@ -22,6 +22,8 @@ import type {
   OrganizationMemberRole,
 } from '../db/schema/organization.js';
 import type { Customer } from '../db/schema/customer.js';
+import { AuditAction, AuditEntityType } from '../audit/audit.actions.js';
+import { AuditService } from '../audit/audit.service.js';
 import type { CreateCustomerDto } from './dto/create-customer.dto.js';
 import type { UpdateCustomerDto } from './dto/update-customer.dto.js';
 
@@ -61,6 +63,8 @@ function toCustomerDto(row: Customer) {
 export class CustomersService {
   private readonly logger = new Logger(CustomersService.name);
 
+  constructor(private readonly audit: AuditService) {}
+
   async create(
     actorUserId: string,
     organizationId: string,
@@ -80,6 +84,21 @@ export class CustomersService {
         state: dto.state ?? null,
         postalCode: dto.postalCode ?? null,
         notes: dto.notes ?? null,
+      });
+
+      await this.audit.record({
+        organizationId,
+        actorUserId: actorUserId,
+        action: AuditAction.CUSTOMER_CREATED,
+        entityType: AuditEntityType.CUSTOMER,
+        entityId: created.id,
+        metadata: {
+          after: {
+            status: created.status,
+            city: created.city,
+            state: created.state,
+          },
+        },
       });
 
       return { customer: toCustomerDto(created) };
@@ -226,6 +245,29 @@ export class CustomersService {
       });
     }
 
+    await this.audit.record({
+      organizationId,
+      actorUserId: actorUserId,
+      action: AuditAction.CUSTOMER_UPDATED,
+      entityType: AuditEntityType.CUSTOMER,
+      entityId: updated.id,
+      metadata: {
+        before: {
+          status: existing.status,
+          city: existing.city,
+          state: existing.state,
+        },
+        after: {
+          status: updated.status,
+          city: updated.city,
+          state: updated.state,
+        },
+        fields: Object.keys(dto).filter(
+          (key) => (dto as Record<string, unknown>)[key] !== undefined,
+        ),
+      },
+    });
+
     return { customer: toCustomerDto(updated) };
   }
 
@@ -259,6 +301,18 @@ export class CustomersService {
         error: 'Not Found',
       });
     }
+
+    await this.audit.record({
+      organizationId,
+      actorUserId: actorUserId,
+      action: AuditAction.CUSTOMER_DEACTIVATED,
+      entityType: AuditEntityType.CUSTOMER,
+      entityId: updated.id,
+      metadata: {
+        before: { status: existing.status },
+        after: { status: updated.status },
+      },
+    });
 
     return { customer: toCustomerDto(updated) };
   }

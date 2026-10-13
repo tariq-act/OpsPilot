@@ -40,6 +40,8 @@ import {
   STALE_EXECUTION_MS,
 } from './automation.policy.js';
 import { AutomationQueueService } from './automation-queue.service.js';
+import { AuditAction, AuditEntityType } from '../audit/audit.actions.js';
+import { AuditService } from '../audit/audit.service.js';
 
 const REMINDABLE_INVOICE_STATUSES = new Set([
   'SENT',
@@ -56,6 +58,7 @@ export class AutomationExecutorService {
     private readonly invoices: InvoicesService,
     private readonly notifications: CustomerNotificationsService,
     private readonly followUps: FollowUpsService,
+    private readonly audit: AuditService,
   ) {}
 
   async recoverStale(): Promise<void> {
@@ -71,32 +74,35 @@ export class AutomationExecutorService {
     const claimed = await claimAutomationExecution(executionId);
     if (!claimed) return;
 
+    let rule: AutomationRule | null = null;
     try {
-      const rule = await findAutomationRuleById(claimed.ruleId);
+      rule = await findAutomationRuleById(claimed.ruleId);
       if (!rule || rule.organizationId !== claimed.organizationId) {
-        await markAutomationExecutionFailed(
-          claimed.id,
+        await this.failExecution(
+          claimed,
           'Automation rule was not found',
         );
         return;
       }
       if (!rule.isActive) {
-        await markAutomationExecutionFailed(
-          claimed.id,
+        await this.failExecution(
+          claimed,
           'Automation rule is inactive',
+          rule.triggerEvent,
         );
         return;
       }
       if (ruleConfigError(rule.triggerEvent, rule.conditions, rule.actions)) {
-        await markAutomationExecutionFailed(
-          claimed.id,
+        await this.failExecution(
+          claimed,
           'Automation rule configuration is invalid',
+          rule.triggerEvent,
         );
         return;
       }
 
       const result = await runInsideAutomation(() =>
-        this.perform(rule, claimed),
+        this.perform(rule!, claimed),
       );
       await markAutomationExecutionSucceeded(claimed.id, result);
     } catch (error) {
@@ -112,9 +118,33 @@ export class AutomationExecutorService {
         );
         return;
       }
-      await markAutomationExecutionFailed(claimed.id, message);
+      await this.failExecution(
+        claimed,
+        message,
+        rule?.triggerEvent,
+      );
       this.logger.warn(`Automation execution failed execution=${claimed.id}`);
     }
+  }
+
+  private async failExecution(
+    execution: AutomationExecution,
+    reason: string,
+    trigger?: string,
+  ): Promise<void> {
+    await markAutomationExecutionFailed(execution.id, reason);
+    await this.audit.record({
+      organizationId: execution.organizationId,
+      actorUserId: null,
+      action: AuditAction.AUTOMATION_EXECUTION_FAILED,
+      entityType: AuditEntityType.AUTOMATION_EXECUTION,
+      entityId: execution.id,
+      metadata: {
+        ruleId: execution.ruleId,
+        ...(trigger !== undefined ? { trigger } : {}),
+        reason,
+      },
+    });
   }
 
   private async perform(

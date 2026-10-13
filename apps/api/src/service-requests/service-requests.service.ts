@@ -26,6 +26,8 @@ import type { ServiceRequest } from '../db/schema/service-request.js';
 import type { CreateServiceRequestDto } from './dto/create-service-request.dto.js';
 import type { ListServiceRequestsQueryDto } from './dto/list-service-requests-query.dto.js';
 import type { UpdateServiceRequestDto } from './dto/update-service-request.dto.js';
+import { AuditAction, AuditEntityType } from '../audit/audit.actions.js';
+import { AuditService } from '../audit/audit.service.js';
 import { canTransitionServiceRequestStatus } from './service-request-status.js';
 
 const REQUEST_MANAGER_ROLES = [
@@ -80,6 +82,8 @@ function parseOptionalDate(
 export class ServiceRequestsService {
   private readonly logger = new Logger(ServiceRequestsService.name);
 
+  constructor(private readonly audit: AuditService) {}
+
   async create(
     actorUserId: string,
     organizationId: string,
@@ -111,6 +115,21 @@ export class ServiceRequestsService {
         preferredDate: parseOptionalDate(dto.preferredDate) ?? null,
         preferredTime: dto.preferredTime ?? null,
         createdBy: actorUserId,
+      });
+
+      await this.audit.record({
+        organizationId,
+        actorUserId,
+        action: AuditAction.SERVICE_REQUEST_CREATED,
+        entityType: AuditEntityType.SERVICE_REQUEST,
+        entityId: created.id,
+        metadata: {
+          after: {
+            customerId: created.customerId,
+            status: created.status,
+            priority: created.priority,
+          },
+        },
       });
 
       return { serviceRequest: toServiceRequestDto(created) };
@@ -294,6 +313,24 @@ export class ServiceRequestsService {
       });
     }
 
+    await this.audit.record({
+      organizationId,
+      actorUserId,
+      action: AuditAction.SERVICE_REQUEST_UPDATED,
+      entityType: AuditEntityType.SERVICE_REQUEST,
+      entityId: updated.id,
+      metadata: {
+        before: {
+          status: existing.status,
+          priority: existing.priority,
+        },
+        after: {
+          status: updated.status,
+          priority: updated.priority,
+        },
+      },
+    });
+
     return { serviceRequest: toServiceRequestDto(updated) };
   }
 
@@ -341,6 +378,18 @@ export class ServiceRequestsService {
         error: 'Not Found',
       });
     }
+
+    await this.audit.record({
+      organizationId,
+      actorUserId,
+      action: AuditAction.SERVICE_REQUEST_CANCELLED,
+      entityType: AuditEntityType.SERVICE_REQUEST,
+      entityId: updated.id,
+      metadata: {
+        before: { status: existing.status },
+        after: { status: updated.status },
+      },
+    });
 
     return { serviceRequest: toServiceRequestDto(updated) };
   }
