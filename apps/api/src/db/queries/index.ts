@@ -192,3 +192,29 @@ export type {
   ListAutomationRulesFilter,
   UpdateAutomationRuleInput,
 } from './automation.js';
+export {
+  ANALYTICS_ACTIVE_JOB_STATUSES,
+  countActiveCustomers,
+  countDistinctCustomersWithJobs,
+  countJobsByStatuses,
+  countJobsGroupedByStatus,
+  countNewCustomers,
+  countOpenServiceRequests,
+  countOutstandingInvoices,
+  countRepeatCustomers,
+  countServiceRequests,
+  countSucceededPayments,
+  listCustomerActivity,
+  listRevenueTrends,
+  listTechnicianWorkload,
+  sumInvoicedAmounts,
+  sumOutstandingBalances,
+  sumSucceededPayments,
+} from './analytics.js';
+export type {
+  AnalyticsDateRange,
+  AnalyticsPage,
+  CustomerActivityRow,
+  RevenueTrendPeriod,
+  TechnicianWorkloadRow,
+} from './analytics.js';
