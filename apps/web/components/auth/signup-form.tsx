@@ -1,23 +1,25 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { useMemo, useState } from "react"
-import { LuArrowRight, LuMail, LuUserRound } from "react-icons/lu"
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { LuArrowRight, LuMail, LuUserRound } from "react-icons/lu";
 
-import { GoogleButton } from "@/components/auth/google-button"
-import { PasswordField } from "@/components/auth/password-field"
-import { Button } from "@/components/ui/button"
+import { GoogleButton } from "@/components/auth/google-button";
+import { PasswordField } from "@/components/auth/password-field";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { authClient } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 
 const requirements = [
   {
@@ -35,13 +37,17 @@ const requirements = [
     label: "1 number",
     test: (value: string) => /\d/.test(value),
   },
-] as const
+] as const;
 
 export function SignupForm() {
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
+  const router = useRouter();
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const passwordChecks = useMemo(
     () =>
@@ -50,12 +56,41 @@ export function SignupForm() {
         met: requirement.test(password),
       })),
     [password],
-  )
+  );
 
   const confirmError =
     confirmPassword.length > 0 && confirmPassword !== password
       ? "Passwords do not match"
-      : undefined
+      : undefined;
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (confirmError) return;
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      const result = await authClient.signUp.email({
+        name,
+        email,
+        password,
+        fetchOptions: { credentials: "include" },
+      });
+
+      if (result.error) {
+        setError(result.error.message ?? "Unable to create account.");
+        return;
+      }
+
+      // New user lands on onboarding to create their first organization.
+      router.push("/onboarding");
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <Card className="rounded-2xl shadow-md">
@@ -68,12 +103,7 @@ export function SignupForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form
-          className="flex flex-col gap-5"
-          onSubmit={(event) => {
-            event.preventDefault()
-          }}
-        >
+        <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
           <GoogleButton />
 
           <div className="flex items-center gap-3">
@@ -100,6 +130,7 @@ export function SignupForm() {
                 autoComplete="name"
                 required
                 className="h-11 rounded-xl pl-10"
+                disabled={loading}
               />
             </div>
           </div>
@@ -120,6 +151,7 @@ export function SignupForm() {
                 autoComplete="email"
                 required
                 className="h-11 rounded-xl pl-10"
+                disabled={loading}
               />
             </div>
           </div>
@@ -133,6 +165,7 @@ export function SignupForm() {
               placeholder="Create a password"
               autoComplete="new-password"
               required
+              disabled={loading}
             />
             <div className="flex flex-wrap gap-2">
               {passwordChecks.map((requirement) => (
@@ -159,24 +192,45 @@ export function SignupForm() {
             placeholder="Confirm your password"
             autoComplete="new-password"
             required
+            disabled={loading}
             error={confirmError}
           />
 
+          {error ? (
+            <p
+              role="alert"
+              className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {error}
+            </p>
+          ) : null}
+
           <p className="text-xs leading-relaxed text-muted-foreground">
             By creating an account, you agree to our{" "}
-            <Link href="#" className="font-medium text-primary hover:text-primary/80">
+            <Link
+              href="#"
+              className="font-medium text-primary hover:text-primary/80"
+            >
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link href="#" className="font-medium text-primary hover:text-primary/80">
+            <Link
+              href="#"
+              className="font-medium text-primary hover:text-primary/80"
+            >
               Privacy Policy
             </Link>
             .
           </p>
 
-          <Button type="submit" size="lg" className="h-11 w-full rounded-xl">
-            Create account
-            <LuArrowRight data-icon="inline-end" />
+          <Button
+            type="submit"
+            size="lg"
+            className="h-11 w-full rounded-xl"
+            disabled={loading || Boolean(confirmError)}
+          >
+            {loading ? "Creating account…" : "Create account"}
+            {!loading && <LuArrowRight data-icon="inline-end" />}
           </Button>
 
           <p className="text-center text-sm text-muted-foreground">
@@ -191,5 +245,5 @@ export function SignupForm() {
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }

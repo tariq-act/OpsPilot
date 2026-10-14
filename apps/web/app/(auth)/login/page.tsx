@@ -1,12 +1,13 @@
-import type { Metadata } from "next"
+import { Suspense } from "react";
+import type { Metadata } from "next";
 
-import { BrandMark } from "@/components/auth/brand-mark"
-import { LoginForm } from "@/components/auth/login-form"
-import { LoginPanel } from "@/components/auth/login-panel"
+import { BrandMark } from "@/components/auth/brand-mark";
+import { LoginForm } from "@/components/auth/login-form";
+import { LoginPanel } from "@/components/auth/login-panel";
 
 export const metadata: Metadata = {
   title: "Log in",
-}
+};
 
 export default function LoginPage() {
   return (
@@ -31,7 +32,13 @@ export default function LoginPage() {
         </div>
         <div className="flex flex-1 items-center justify-center px-6 py-8 sm:px-10">
           <div className="w-full max-w-md">
-            <LoginForm />
+            <Suspense
+              fallback={
+                <div className="h-96 w-full animate-pulse rounded-2xl bg-muted" />
+              }
+            >
+              <LoginForm />
+            </Suspense>
           </div>
         </div>
         <footer className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 px-6 pb-8 text-xs text-muted-foreground">
@@ -47,5 +54,5 @@ export default function LoginPage() {
         </footer>
       </div>
     </div>
-  )
+  );
 }
