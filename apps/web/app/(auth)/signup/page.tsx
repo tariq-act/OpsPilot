@@ -1,12 +1,12 @@
-import type { Metadata } from "next"
+import type { Metadata } from "next";
 
-import { BrandMark } from "@/components/auth/brand-mark"
-import { SignupForm } from "@/components/auth/signup-form"
-import { SignupPanel } from "@/components/auth/signup-panel"
+import { BrandMark } from "@/components/auth/brand-mark";
+import { SignupForm } from "@/components/auth/signup-form";
+import { SignupPanel } from "@/components/auth/signup-panel";
 
 export const metadata: Metadata = {
   title: "Sign up",
-}
+};
 
 export default function SignupPage() {
   return (
@@ -45,5 +45,5 @@ export default function SignupPage() {
         </footer>
       </div>
     </div>
-  )
+  );
 }
