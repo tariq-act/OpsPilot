@@ -1,19 +1,24 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { LuCircleCheck, LuCircleX, LuLoader } from "react-icons/lu";
 
 import { BrandMark } from "@/components/auth/brand-mark";
 import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import { authClient } from "@/lib/auth-client";
+import type { AcceptInvitationResponse } from "@/lib/types";
 
 type State = "loading" | "success" | "error";
 
 function AcceptInvitationContent() {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token");
+
+  const { data: session, isPending: sessionLoading } = authClient.useSession();
 
   const [state, setState] = useState<State>(() =>
     token ? "loading" : "error",
@@ -21,20 +26,50 @@ function AcceptInvitationContent() {
   const [errorMessage, setErrorMessage] = useState(() =>
     token ? "" : "No invitation token provided.",
   );
+  const hasAttempted = useRef(false);
 
   useEffect(() => {
     if (!token) return;
 
+    if (sessionLoading) return;
+
+    const queryString = searchParams.toString();
+    const fullPath = queryString ? `${pathname}?${queryString}` : pathname;
+    const loginUrl = `/login?next=${encodeURIComponent(fullPath)}`;
+
+    if (!session?.user) {
+      router.replace(loginUrl);
+      return;
+    }
+
+    if (hasAttempted.current) return;
+    hasAttempted.current = true;
+
     api
-      .post(`/invitations/${token}/accept`)
-      .then(() => setState("success"))
+      .post<AcceptInvitationResponse>(`/invitations/${token}/accept`)
+      .then((res) => {
+        if (typeof window !== "undefined" && res.membership?.organizationId) {
+          sessionStorage.setItem("opspilot:org", res.membership.organizationId);
+        }
+        setState("success");
+      })
       .catch((err: unknown) => {
+        if (err instanceof ApiError && err.isUnauthorized) {
+          router.replace(loginUrl);
+          return;
+        }
         setState("error");
         setErrorMessage(
           err instanceof Error ? err.message : "Unable to accept invitation.",
         );
       });
-  }, [token]);
+  }, [token, sessionLoading, session, pathname, searchParams, router]);
+
+  const queryString = searchParams.toString();
+  const fullPath = queryString ? `${pathname}?${queryString}` : pathname;
+  const backToLoginUrl = token
+    ? `/login?next=${encodeURIComponent(fullPath)}`
+    : "/login";
 
   return (
     <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 text-center shadow-md">
@@ -85,7 +120,7 @@ function AcceptInvitationContent() {
             variant="outline"
             size="lg"
             className="w-full rounded-xl"
-            onClick={() => router.replace("/login")}
+            onClick={() => router.replace(backToLoginUrl)}
           >
             Back to login
           </Button>

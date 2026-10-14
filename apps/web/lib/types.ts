@@ -95,6 +95,21 @@ export interface CreateInvitationResponse {
   invitation: Invitation;
 }
 
+export interface AcceptInvitationResponse {
+  membership: {
+    id: string;
+    organizationId: string;
+    userId: string;
+    role: MemberRole;
+    status: MemberStatus;
+  };
+  invitation: {
+    id: string;
+    status: InvitationStatus;
+    acceptedAt: string | null;
+  };
+}
+
 // ---------------------------------------------------------------------------
 // API error shape (matches NestJS HttpException body)
 // ---------------------------------------------------------------------------

@@ -17,7 +17,7 @@ import { NextResponse } from "next/server";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
-const PUBLIC_PATHS = ["/login", "/signup", "/invitations"];
+const PUBLIC_PATHS = ["/login", "/signup"];
 
 const PROTECTED_PREFIXES = ["/dashboard", "/onboarding"];
 
@@ -71,7 +71,8 @@ export async function middleware(request: NextRequest) {
   // Redirect unauthenticated users away from protected pages.
   if (!hasSession && isProtectedPath(pathname)) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", pathname);
+    const next = `${pathname}${request.nextUrl.search}`;
+    loginUrl.searchParams.set("next", next);
     return NextResponse.redirect(loginUrl);
   }
 
