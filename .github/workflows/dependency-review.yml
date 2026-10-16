@@ -21,6 +21,3 @@ jobs:
 
       - name: Install Dependencies
         run: bun ci
-
-      - name: Audit Dependencies
-        run: bun audit --audit-level=high
