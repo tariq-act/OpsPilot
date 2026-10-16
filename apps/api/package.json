@@ -35,7 +35,7 @@
     "@thallesp/nestjs-better-auth": "^2.8.0",
     "better-auth": "^1.7.5",
     "dotenv": "^18.0.1",
-    "drizzle-orm": "^1.0.0-rc.4",
+    "drizzle-orm": "^1.0.0-rc.5-5935859",
     "multer": "^2.4.0",
     "postgres": "^3.4.9",
     "reflect-metadata": "^0.2.2",
