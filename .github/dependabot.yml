@@ -41,12 +41,11 @@ updates:
     commit-message:
       prefix: chore
     groups:
-      actions-minor-and-patch:
+      # Majors included: Action majors are usually safe, and
+      # dependabot-auto-merge.yml merges these PRs automatically.
+      github-actions:
         patterns:
           - "*"
-        update-types:
-          - minor
-          - patch
 
   # compose.yaml (Postgres image). The docker ecosystem does not read Compose files.
   - package-ecosystem: docker-compose
