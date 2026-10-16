@@ -119,3 +119,90 @@ export interface ApiErrorBody {
   message: string;
   error: string;
 }
+
+// ---------------------------------------------------------------------------
+// Dashboard resources
+// Dates arrive as ISO strings from JSON. These shapes cover the fields the
+// dashboard reads from the list endpoints.
+// ---------------------------------------------------------------------------
+
+export type JobStatus =
+  | "DRAFT"
+  | "CONFIRMED"
+  | "EN_ROUTE"
+  | "ARRIVED"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELLED";
+
+export interface Job {
+  id: string;
+  organizationId: string;
+  title: string;
+  status: JobStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JobListResponse {
+  jobs: Job[];
+}
+
+export type ServiceRequestStatus =
+  "NEW" | "IN_REVIEW" | "ACCEPTED" | "REJECTED" | "CANCELLED";
+
+export interface ServiceRequest {
+  id: string;
+  organizationId: string;
+  title: string;
+  status: ServiceRequestStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ServiceRequestListResponse {
+  serviceRequests: ServiceRequest[];
+}
+
+export type TechnicianStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
+
+export interface Technician {
+  id: string;
+  organizationId: string;
+  status: TechnicianStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TechnicianListResponse {
+  technicians: Technician[];
+}
+
+export type InvoiceStatus =
+  "DRAFT" | "SENT" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "VOID";
+
+export interface Invoice {
+  id: string;
+  organizationId: string;
+  invoiceNumber: string;
+  status: InvoiceStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InvoiceListResponse {
+  invoices: Invoice[];
+}
+
+export interface AuditLog {
+  id: string;
+  organizationId: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  createdAt: string;
+}
+
+export interface AuditLogListResponse {
+  auditLogs: AuditLog[];
+}
