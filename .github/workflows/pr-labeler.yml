@@ -2,7 +2,11 @@ name: PR Labeler
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: pr-labeler-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -12,9 +16,16 @@ jobs:
   label:
     name: Label Pull Request
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Apply PR Labels
         uses: actions/labeler@v7
         with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
           configuration-path: .github/labeler.yml
+          # Keep area labels in sync as the PR diff changes.
+          # Only labels defined in labeler.yml are added or removed.
+          sync-labels: true
+          # Match paths that start with a dot (for example .github).
+          dot: true
