@@ -3,21 +3,31 @@ name: Dependency Review
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  merge_group:
+
+concurrency:
+  group: dependency-review-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
+  actions: read
   contents: read
+  # Granted because the reusable scan job requests it. Results are not
+  # uploaded to code scanning; see upload-sarif below.
+  security-events: write
 
 jobs:
   dependency-review:
     name: Review Dependencies
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v6
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install Dependencies
-        run: bun ci
+    # Compares bun.lock on the base branch with this pull request and fails
+    # when the pull request introduces a known vulnerability. GitHub
+    # Dependency Review does not read bun.lock.
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.7.0
+    with:
+      upload-sarif: false
+      scan-args: |-
+        --lockfile=bun.lock
+    permissions:
+      actions: read
+      contents: read
+      security-events: write

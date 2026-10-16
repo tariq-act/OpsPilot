@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createOrganization } from "@/lib/api/organizations";
+import { useCreateOrganizationMutation } from "@/lib/query/organizations";
 
 /** Convert a display name to a URL-safe slug. */
 function toSlug(name: string) {
@@ -35,17 +35,17 @@ export default function OnboardingPage() {
     Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
   );
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const createOrganization = useCreateOrganizationMutation();
 
   const slug = slugOverride || toSlug(name);
+  const loading = createOrganization.isPending;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    setLoading(true);
 
     try {
-      await createOrganization({
+      await createOrganization.mutateAsync({
         name: name.trim(),
         slug,
         timezone,
@@ -56,8 +56,6 @@ export default function OnboardingPage() {
       setError(
         err instanceof Error ? err.message : "Unable to create organization.",
       );
-    } finally {
-      setLoading(false);
     }
   }
 
