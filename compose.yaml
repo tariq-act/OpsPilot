@@ -2,7 +2,7 @@ name: opspilot
 
 services:
   postgres:
-    image: postgres:16
+    image: postgres:18
     container_name: opspilot-postgres
     restart: unless-stopped
     environment:
