@@ -4,111 +4,93 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 
-import { listOrganizations } from "@/lib/api/organizations";
+import { useOrganizationsQuery } from "@/lib/query/organizations";
 import type { OrganizationListItem } from "@/lib/types";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
+/**
+ * Client UI state for the selected organization.
+ * The organization list itself lives in the TanStack Query cache.
+ */
 interface OrgContextValue {
-  /** All organizations the current user belongs to. */
   organizations: OrganizationListItem[];
-  /** The currently selected organization, or null while loading. */
   current: OrganizationListItem | null;
-  /** True while the initial fetch is in flight. */
   loading: boolean;
-  /** Non-null when the fetch failed. */
   error: string | null;
-  /** Switch the active organization by id. */
   switchOrganization: (id: string) => void;
-  /** Re-fetch the list (e.g. after creating a new organization). */
   refresh: () => Promise<void>;
 }
 
-// ---------------------------------------------------------------------------
-// Context
-// ---------------------------------------------------------------------------
-
 const OrgContext = createContext<OrgContextValue | null>(null);
-
-// ---------------------------------------------------------------------------
-// Provider
-// ---------------------------------------------------------------------------
 
 const STORAGE_KEY = "opspilot:org";
 
+type Listener = () => void;
+const listeners = new Set<Listener>();
+
+function emitOrgSelectionChange() {
+  for (const listener of listeners) listener();
+}
+
+function subscribeOrgSelection(listener: Listener) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function getStoredOrgId(): string | null {
+  try {
+    return sessionStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setStoredOrgId(id: string) {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, id);
+  } catch {
+    // Ignore storage failures; selection still works for this session.
+  }
+  emitOrgSelectionChange();
+}
+
+function getServerOrgId(): string | null {
+  return null;
+}
+
 export function OrgProvider({ children }: { children: ReactNode }) {
-  const [organizations, setOrganizations] = useState<OrganizationListItem[]>(
-    [],
+  const { organizations, server, refetch, isPending, isError, error } =
+    useOrganizationsQuery();
+
+  const storedId = useSyncExternalStore(
+    subscribeOrgSelection,
+    getStoredOrgId,
+    getServerOrgId,
   );
-  const [currentId, setCurrentId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let ignore = false;
-
-    listOrganizations()
-      .then(({ organizations: orgs }) => {
-        if (ignore) return;
-        setOrganizations(orgs);
-
-        const stored = sessionStorage.getItem(STORAGE_KEY);
-        const restoredId =
-          stored && orgs.some((o) => o.id === stored)
-            ? stored
-            : (orgs[0]?.id ?? null);
-        setCurrentId(restoredId);
-        setLoading(false);
-      })
-      .catch((err: unknown) => {
-        if (ignore) return;
-        setError(
-          err instanceof Error ? err.message : "Failed to load organizations.",
-        );
-        setLoading(false);
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-  const fetchOrganizations = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { organizations: orgs } = await listOrganizations();
-      setOrganizations(orgs);
-
-      // Restore previously selected org, or fall back to first.
-      const stored = sessionStorage.getItem(STORAGE_KEY);
-      const restoredId =
-        stored && orgs.some((o) => o.id === stored)
-          ? stored
-          : (orgs[0]?.id ?? null);
-      setCurrentId(restoredId);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load organizations.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const current =
+    (storedId ? organizations.find((org) => org.id === storedId) : undefined) ??
+    organizations[0] ??
+    null;
 
   const switchOrganization = useCallback((id: string) => {
-    setCurrentId(id);
-    sessionStorage.setItem(STORAGE_KEY, id);
+    setStoredOrgId(id);
   }, []);
 
-  const current = organizations.find((o) => o.id === currentId) ?? null;
+  const refresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
+  const loading = isPending && organizations.length === 0;
+  const errorMessage =
+    isError && error instanceof Error
+      ? error.message
+      : (server.error?.message ?? null);
 
   return (
     <OrgContext.Provider
@@ -116,19 +98,15 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         organizations,
         current,
         loading,
-        error,
+        error: errorMessage,
         switchOrganization,
-        refresh: fetchOrganizations,
+        refresh,
       }}
     >
       {children}
     </OrgContext.Provider>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
 
 export function useOrg(): OrgContextValue {
   const ctx = useContext(OrgContext);

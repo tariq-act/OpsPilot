@@ -1,30 +1,64 @@
+# Path-based PR labels for the OpsPilot monorepo.
+# Label names must already exist in the GitHub repo, or the action
+# must have permission to create them.
+# Docs: https://github.com/actions/labeler
+
 api:
   - changed-files:
       - any-glob-to-any-file:
-          - "apps/api/**"
+          - apps/api/**
 
 web:
   - changed-files:
       - any-glob-to-any-file:
-          - "apps/web/**"
+          - apps/web/**
+
+packages:
+  - changed-files:
+      - any-glob-to-any-file:
+          - packages/**
+
 db:
   - changed-files:
       - any-glob-to-any-file:
-          - "apps/api/src/db/**"
-          
+          - apps/api/src/db/**
+
 ui:
   - changed-files:
       - any-glob-to-any-file:
-          - "apps/web/src/components/**"
+          - apps/web/components/**
+          - apps/web/app/**
+          - packages/ui/**
 
 dependencies:
   - changed-files:
       - any-glob-to-any-file:
           - "**/package.json"
-          - "pnpm-lock.yaml"
-          - "pnpm-workspace.yaml"
+          - bun.lock
+          - bun.lockb
 
 ci:
   - changed-files:
       - any-glob-to-any-file:
-          - ".github/**"
+          - .github/**
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - docs/**
+          - README.md
+          - OPSPILOT_FEATURES.md
+          - AGENTS.md
+
+config:
+  - changed-files:
+      - any-glob-to-any-file:
+          - turbo.json
+          - compose.yml
+          - compose.yaml
+          - docker-compose.yml
+          - docker-compose.yaml
+          - "*.config.*"
+          - "**/tsconfig*.json"
+          - ".cursor/**"
+          - ".agents/**"
