@@ -55,7 +55,7 @@ const LOADING_KPIS = [
 
 const QUICK_ACTIONS: { href: string; label: string; icon: ElementType }[] = [
   {
-    href: SERVICE_REQUESTS_HREF,
+    href: `${SERVICE_REQUESTS_HREF}?create=1`,
     label: "New Service Request",
     icon: LuBell,
   },
