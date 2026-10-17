@@ -59,7 +59,7 @@ const QUICK_ACTIONS: { href: string; label: string; icon: ElementType }[] = [
     label: "New Service Request",
     icon: LuBell,
   },
-  { href: JOBS_HREF, label: "Create Job", icon: LuBriefcase },
+  { href: `${JOBS_HREF}?create=1`, label: "Create Job", icon: LuBriefcase },
   { href: CUSTOMERS_HREF, label: "Add Customer", icon: LuUsers },
   { href: TECHNICIANS_HREF, label: "Add Technician", icon: LuWrench },
 ];

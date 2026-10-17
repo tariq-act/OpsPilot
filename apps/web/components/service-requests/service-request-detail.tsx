@@ -330,7 +330,7 @@ export function ServiceRequestDetail({ id }: { id: string }) {
               </p>
             </div>
             <Link
-              href={`/dashboard/jobs?requestId=${encodeURIComponent(id)}`}
+              href={`/dashboard/jobs/${relatedJob.id}`}
               className={buttonVariants({ variant: "outline", size: "sm" })}
               title={relatedJob.id}
             >
