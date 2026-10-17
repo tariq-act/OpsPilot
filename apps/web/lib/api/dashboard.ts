@@ -5,6 +5,9 @@
  */
 
 import { api } from "@/lib/api";
+import { listJobs as listJobsResource } from "@/lib/api/jobs";
+import { organizationHeaders } from "@/lib/api/org-headers";
+import { listServiceRequests as listServiceRequestsResource } from "@/lib/api/service-requests";
 import type {
   AuditLogListResponse,
   InvoiceListResponse,
@@ -13,27 +16,16 @@ import type {
   TechnicianListResponse,
 } from "@/lib/types";
 
-function organizationHeaders(organizationId: string): Record<string, string> {
-  return { "x-organization-id": organizationId };
-}
-
-/** Jobs visible to the signed-in member in this organization. */
 export function listJobs(organizationId: string): Promise<JobListResponse> {
-  return api.get<JobListResponse>("/jobs", {
-    headers: organizationHeaders(organizationId),
-  });
+  return listJobsResource(organizationId);
 }
 
-/** Service requests visible to the signed-in member in this organization. */
 export function listServiceRequests(
   organizationId: string,
 ): Promise<ServiceRequestListResponse> {
-  return api.get<ServiceRequestListResponse>("/service-requests", {
-    headers: organizationHeaders(organizationId),
-  });
+  return listServiceRequestsResource(organizationId);
 }
 
-/** Technician profiles visible to the signed-in member in this organization. */
 export function listTechnicians(
   organizationId: string,
 ): Promise<TechnicianListResponse> {
@@ -42,7 +34,6 @@ export function listTechnicians(
   });
 }
 
-/** Invoices visible to the signed-in member in this organization. */
 export function listInvoices(
   organizationId: string,
 ): Promise<InvoiceListResponse> {
@@ -51,15 +42,17 @@ export function listInvoices(
   });
 }
 
-/**
- * Newest audit events for this organization.
- * Owners and admins only. Other roles receive 403.
- */
 export function listAuditLogs(
   organizationId: string,
   limit: number,
+  filters?: {
+    entityType?: string;
+    entityId?: string;
+  },
 ): Promise<AuditLogListResponse> {
   const params = new URLSearchParams({ limit: String(limit) });
+  if (filters?.entityType) params.set("entityType", filters.entityType);
+  if (filters?.entityId) params.set("entityId", filters.entityId);
   return api.get<AuditLogListResponse>(`/audit-logs?${params.toString()}`, {
     headers: organizationHeaders(organizationId),
   });
