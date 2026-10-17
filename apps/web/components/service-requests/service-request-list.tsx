@@ -342,7 +342,7 @@ export function ServiceRequestList() {
         <div className="rounded-2xl border border-border bg-card p-10 text-center">
           <p className="text-sm font-medium text-foreground">
             {requestsQuery.serviceRequests.length === 0
-              ? "No service requests yet"
+              ? "No service requests found."
               : "No requests match these filters"}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">

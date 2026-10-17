@@ -24,8 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ApiError } from "@/lib/api";
 import { useCustomersQuery } from "@/lib/query/customers";
+import { toUserErrorMessage } from "@/lib/query/errors";
 import { useCreateServiceRequestMutation } from "@/lib/query/service-requests";
 import {
   SERVICE_REQUEST_PRIORITY_LABEL,
@@ -133,11 +133,9 @@ export function ServiceRequestCreateDialog({
       onOpenChange(false);
       router.push(`/dashboard/service-requests/${result.serviceRequest.id}`);
     } catch (error) {
-      if (error instanceof ApiError) {
-        setSubmitError(error.message);
-        return;
-      }
-      setSubmitError("Unable to create the service request.");
+      setSubmitError(
+        toUserErrorMessage(error, "Unable to create the service request."),
+      );
     }
   }
 
