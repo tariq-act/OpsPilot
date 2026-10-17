@@ -138,6 +138,8 @@ export type JobStatus =
 export interface Job {
   id: string;
   organizationId: string;
+  customerId: string;
+  requestId: string;
   title: string;
   status: JobStatus;
   createdAt: string;
@@ -148,20 +150,96 @@ export interface JobListResponse {
   jobs: Job[];
 }
 
+export interface ListJobsQuery {
+  status?: JobStatus;
+  customerId?: string;
+  requestId?: string;
+}
+
 export type ServiceRequestStatus =
   "NEW" | "IN_REVIEW" | "ACCEPTED" | "REJECTED" | "CANCELLED";
+
+export type ServiceRequestPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+
+export type ServiceRequestSource =
+  "PHONE" | "EMAIL" | "WEBSITE" | "WALK_IN" | "WHATSAPP" | "OTHER";
 
 export interface ServiceRequest {
   id: string;
   organizationId: string;
+  customerId: string;
   title: string;
+  description: string | null;
+  priority: ServiceRequestPriority;
   status: ServiceRequestStatus;
+  source: ServiceRequestSource;
+  preferredDate: string | null;
+  preferredTime: string | null;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ServiceRequestListResponse {
   serviceRequests: ServiceRequest[];
+}
+
+export interface ServiceRequestResponse {
+  serviceRequest: ServiceRequest;
+}
+
+export interface ListServiceRequestsQuery {
+  status?: ServiceRequestStatus;
+  priority?: ServiceRequestPriority;
+  customerId?: string;
+  fromDate?: string;
+  toDate?: string;
+}
+
+export interface CreateServiceRequestInput {
+  customerId: string;
+  title: string;
+  description?: string;
+  priority?: ServiceRequestPriority;
+  source?: ServiceRequestSource;
+  preferredDate?: string;
+  preferredTime?: string;
+}
+
+export interface UpdateServiceRequestInput {
+  title?: string;
+  description?: string | null;
+  priority?: ServiceRequestPriority;
+  status?: ServiceRequestStatus;
+  source?: ServiceRequestSource;
+  preferredDate?: string | null;
+  preferredTime?: string | null;
+}
+
+export type CustomerStatus = "ACTIVE" | "INACTIVE";
+
+export interface Customer {
+  id: string;
+  organizationId: string;
+  name: string;
+  email: string | null;
+  phone: string;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  notes: string | null;
+  status: CustomerStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomerListResponse {
+  customers: Customer[];
+}
+
+export interface CustomerResponse {
+  customer: Customer;
 }
 
 export type TechnicianStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
