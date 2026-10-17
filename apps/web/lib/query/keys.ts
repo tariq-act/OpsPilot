@@ -36,6 +36,12 @@ export const queryKeys = {
       organizationId: string,
       filters: Record<string, string | undefined> = {},
     ) => [...queryKeys.jobs.lists(organizationId), filters] as const,
+    detail: (organizationId: string, id: string) =>
+      [...queryKeys.jobs.all(organizationId), "detail", id] as const,
+    assignments: (organizationId: string, id: string) =>
+      [...queryKeys.jobs.detail(organizationId, id), "assignments"] as const,
+    activities: (organizationId: string, id: string) =>
+      [...queryKeys.jobs.detail(organizationId, id), "activities"] as const,
   },
 
   serviceRequests: {
