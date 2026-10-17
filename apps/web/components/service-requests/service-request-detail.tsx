@@ -11,7 +11,14 @@ import {
   ServiceRequestStatusBadge,
 } from "@/components/service-requests/request-badges";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { ApiError } from "@/lib/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   formatCustomerAddress,
   formatDate,
@@ -20,6 +27,7 @@ import {
 } from "@/lib/format";
 import { useAuditLogsQuery } from "@/lib/query/audit-logs";
 import { useCustomerQuery } from "@/lib/query/customers";
+import { toUserErrorMessage } from "@/lib/query/errors";
 import { useJobsQuery } from "@/lib/query/jobs";
 import {
   useCancelServiceRequestMutation,
@@ -72,6 +80,7 @@ export function ServiceRequestDetail({ id }: { id: string }) {
 
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   const pending = updateMutation.isPending || cancelMutation.isPending;
   const transitions = request
@@ -79,23 +88,36 @@ export function ServiceRequestDetail({ id }: { id: string }) {
     : [];
 
   async function runTransition(next: ServiceRequestStatus) {
+    if (next === "CANCELLED") {
+      setCancelOpen(true);
+      return;
+    }
+
     setActionError(null);
     setActionSuccess(null);
     try {
-      if (next === "CANCELLED") {
-        await cancelMutation.mutateAsync(id);
-      } else {
-        await updateMutation.mutateAsync({ id, body: { status: next } });
-      }
+      await updateMutation.mutateAsync({ id, body: { status: next } });
       setActionSuccess(
         `Status updated to ${SERVICE_REQUEST_STATUS_LABEL[next]}.`,
       );
     } catch (error) {
-      if (error instanceof ApiError) {
-        setActionError(error.message);
-        return;
-      }
-      setActionError("Unable to update status.");
+      setActionError(
+        toUserErrorMessage(error, "Unable to update this request."),
+      );
+    }
+  }
+
+  async function confirmCancel() {
+    setActionError(null);
+    setActionSuccess(null);
+    try {
+      await cancelMutation.mutateAsync(id);
+      setCancelOpen(false);
+      setActionSuccess("Request cancelled.");
+    } catch (error) {
+      setActionError(
+        toUserErrorMessage(error, "Unable to cancel this request."),
+      );
     }
   }
 
@@ -199,6 +221,42 @@ export function ServiceRequestDetail({ id }: { id: string }) {
         </p>
       ) : null}
 
+      <Dialog
+        open={cancelOpen}
+        onOpenChange={(open) => {
+          if (cancelMutation.isPending) return;
+          setCancelOpen(open);
+        }}
+      >
+        <DialogContent showCloseButton className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancel this request?</DialogTitle>
+            <DialogDescription>
+              This marks the request as cancelled. You cannot undo this from the
+              current status.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCancelOpen(false)}
+              disabled={cancelMutation.isPending}
+            >
+              Keep request
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void confirmCancel()}
+              disabled={cancelMutation.isPending}
+            >
+              {cancelMutation.isPending ? "Cancelling…" : "Cancel request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="rounded-2xl border border-border bg-card p-5 lg:col-span-2">
           <h2 className="text-sm font-semibold text-foreground">Request</h2>
@@ -272,10 +330,11 @@ export function ServiceRequestDetail({ id }: { id: string }) {
               </p>
             </div>
             <Link
-              href="/dashboard/jobs"
+              href={`/dashboard/jobs?requestId=${encodeURIComponent(id)}`}
               className={buttonVariants({ variant: "outline", size: "sm" })}
+              title={relatedJob.id}
             >
-              Open jobs
+              View job {shortId(relatedJob.id)}
             </Link>
           </div>
         ) : (
