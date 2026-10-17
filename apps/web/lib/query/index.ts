@@ -16,9 +16,19 @@ export {
 export { jobQueries, useInvalidateJobs, useJobsQuery } from "@/lib/query/jobs";
 
 export {
+  customerQueries,
+  useCustomerQuery,
+  useCustomersQuery,
+} from "@/lib/query/customers";
+
+export {
   serviceRequestQueries,
+  useCancelServiceRequestMutation,
+  useCreateServiceRequestMutation,
   useInvalidateServiceRequests,
+  useServiceRequestQuery,
   useServiceRequestsQuery,
+  useUpdateServiceRequestMutation,
 } from "@/lib/query/service-requests";
 
 export {

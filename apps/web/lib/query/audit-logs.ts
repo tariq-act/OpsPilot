@@ -8,11 +8,21 @@ import { queryKeys } from "@/lib/query/keys";
 import { getServerQueryState } from "@/lib/query/query-state";
 import type { AuditLogListResponse } from "@/lib/types";
 
+type AuditListFilters = {
+  limit: number;
+  entityType?: string;
+  entityId?: string;
+};
+
 export const auditLogQueries = {
-  list: (organizationId: string, limit: number, enabled = true) =>
+  list: (organizationId: string, filters: AuditListFilters, enabled = true) =>
     queryOptions({
-      queryKey: queryKeys.auditLogs.list(organizationId, limit),
-      queryFn: () => listAuditLogs(organizationId, limit),
+      queryKey: queryKeys.auditLogs.list(organizationId, filters),
+      queryFn: () =>
+        listAuditLogs(organizationId, filters.limit, {
+          entityType: filters.entityType,
+          entityId: filters.entityId,
+        }),
       enabled: Boolean(organizationId) && enabled,
       retry(failureCount, error) {
         if (error instanceof ApiError && error.isForbidden) return false;
@@ -25,8 +35,15 @@ export function useAuditLogsQuery(
   organizationId: string,
   limit: number,
   enabled = true,
+  filters?: Omit<AuditListFilters, "limit">,
 ) {
-  const query = useQuery(auditLogQueries.list(organizationId, limit, enabled));
+  const query = useQuery(
+    auditLogQueries.list(
+      organizationId,
+      { limit, entityType: filters?.entityType, entityId: filters?.entityId },
+      enabled,
+    ),
+  );
   const state = getServerQueryState(
     query,
     (data) => data.auditLogs.length === 0,
