@@ -18,10 +18,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  formatDateParam,
+  toIsoDateEnd,
+  toIsoDateStart,
+  todayLocal,
+} from "@/lib/dispatch-date";
 import { formatDate, formatDateTime, shortId } from "@/lib/format";
 import { toUserErrorMessage } from "@/lib/query/errors";
 import { useJobsQuery } from "@/lib/query/jobs";
 import { useOrganizationMembersQuery } from "@/lib/query/organizations";
+import {
+  findOverlappingJobIds,
+  jobsToWindows,
+  workloadLevel,
+} from "@/lib/schedule-overlap";
 import {
   useDeactivateTechnicianMutation,
   useTechnicianQuery,
@@ -41,12 +52,18 @@ export function TechnicianDetail({ id }: { id: string }) {
   const { current } = useOrg();
   const organizationId = current?.id ?? "";
   const timeZone = current?.timezone ?? "UTC";
+  const today = todayLocal();
 
   const detailQuery = useTechnicianQuery(organizationId, id);
   const technician = detailQuery.technician;
 
   const membersQuery = useOrganizationMembersQuery(organizationId);
   const jobsQuery = useJobsQuery(organizationId, { technicianId: id });
+  const todayJobsQuery = useJobsQuery(organizationId, {
+    technicianId: id,
+    fromDate: toIsoDateStart(today),
+    toDate: toIsoDateEnd(today),
+  });
   const deactivateMutation = useDeactivateTechnicianMutation(organizationId);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -69,6 +86,12 @@ export function TechnicianDetail({ id }: { id: string }) {
   const jobHistory = useMemo(() => {
     return jobsQuery.jobs.filter((job) => !OPEN_JOB_STATUSES.has(job.status));
   }, [jobsQuery.jobs]);
+
+  const todayConflictIds = useMemo(
+    () => findOverlappingJobIds(jobsToWindows(todayJobsQuery.jobs)),
+    [todayJobsQuery.jobs],
+  );
+  const todayWorkload = workloadLevel(todayJobsQuery.jobs.length);
 
   async function confirmDeactivate() {
     setActionError(null);
@@ -160,6 +183,12 @@ export function TechnicianDetail({ id }: { id: string }) {
               >
                 Edit
               </Button>
+              <Link
+                href={`/dashboard/dispatch?date=${formatDateParam(today)}`}
+                className={buttonVariants({ variant: "outline" })}
+              >
+                Open dispatch
+              </Link>
               {canDeactivate ? (
                 <Button
                   type="button"
@@ -273,17 +302,67 @@ export function TechnicianDetail({ id }: { id: string }) {
         </section>
       </div>
 
-      <section className="rounded-2xl border border-border bg-card p-5">
+      <section
+        className={cn(
+          "rounded-2xl border bg-card p-5",
+          todayConflictIds.size > 0 || todayWorkload === "busy"
+            ? "border-status-overdue-border"
+            : "border-border",
+        )}
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-foreground">Workload</h2>
           <p className="text-xs text-muted-foreground">
             {assignedJobs.length} open · {jobHistory.length} closed
           </p>
         </div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Open jobs are active assignments. Assign or reassign technicians from
-          a job detail page.
-        </p>
+        <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+          <Field label="Today">
+            {todayJobsQuery.server.isLoading
+              ? "…"
+              : `${todayJobsQuery.jobs.length} assigned`}
+          </Field>
+          <Field label="Load">
+            {todayWorkload === "busy"
+              ? "Busy"
+              : todayWorkload === "moderate"
+                ? "On schedule"
+                : "Free"}
+          </Field>
+          <Field label="Conflicts">
+            {todayConflictIds.size > 0
+              ? `${todayConflictIds.size} overlapping`
+              : "None"}
+          </Field>
+        </dl>
+        {todayJobsQuery.jobs.length > 0 ? (
+          <ul className="mt-4 divide-y divide-border">
+            {todayJobsQuery.jobs.map((job) => (
+              <li
+                key={job.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-2 first:pt-0 last:pb-0"
+              >
+                <div>
+                  <Link
+                    href={`/dashboard/jobs/${job.id}`}
+                    className="text-sm font-medium text-foreground hover:text-primary"
+                  >
+                    {job.title}
+                  </Link>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDateTime(job.scheduledStart, timeZone)}
+                    {todayConflictIds.has(job.id) ? " · Conflict" : ""}
+                  </p>
+                </div>
+                <JobStatusBadge status={job.status} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-muted-foreground">
+            No jobs scheduled for this technician today.
+          </p>
+        )}
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-5">
