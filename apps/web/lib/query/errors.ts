@@ -23,7 +23,7 @@ export function toUserErrorMessage(
       return "You do not have permission to do this.";
     }
     if (error.isNotFound) {
-      return "This service request could not be found.";
+      return "This record could not be found.";
     }
     if (error.status === 409) {
       return "That action is not allowed for the current status.";

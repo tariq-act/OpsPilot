@@ -33,8 +33,12 @@ export {
 
 export {
   customerQueries,
+  useCreateCustomerMutation,
   useCustomerQuery,
   useCustomersQuery,
+  useDeactivateCustomerMutation,
+  useInvalidateCustomers,
+  useUpdateCustomerMutation,
 } from "@/lib/query/customers";
 
 export {

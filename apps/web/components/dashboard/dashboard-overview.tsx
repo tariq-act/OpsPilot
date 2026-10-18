@@ -60,7 +60,7 @@ const QUICK_ACTIONS: { href: string; label: string; icon: ElementType }[] = [
     icon: LuBell,
   },
   { href: `${JOBS_HREF}?create=1`, label: "Create Job", icon: LuBriefcase },
-  { href: CUSTOMERS_HREF, label: "Add Customer", icon: LuUsers },
+  { href: `${CUSTOMERS_HREF}?create=1`, label: "Add Customer", icon: LuUsers },
   { href: TECHNICIANS_HREF, label: "Add Technician", icon: LuWrench },
 ];
 

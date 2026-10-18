@@ -1,10 +1,26 @@
 "use client";
 
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-import { getCustomer, listCustomers } from "@/lib/api/customers";
+import {
+  createCustomer,
+  deactivateCustomer,
+  getCustomer,
+  listCustomers,
+  updateCustomer,
+} from "@/lib/api/customers";
 import { queryKeys } from "@/lib/query/keys";
 import { getServerQueryState } from "@/lib/query/query-state";
+import type {
+  CreateCustomerInput,
+  CustomerResponse,
+  UpdateCustomerInput,
+} from "@/lib/types";
 
 export const customerQueries = {
   list: (organizationId: string) =>
@@ -45,4 +61,72 @@ export function useCustomerQuery(organizationId: string, customerId: string) {
     customer: query.data?.customer ?? null,
     server: state,
   };
+}
+
+export function useInvalidateCustomers() {
+  const queryClient = useQueryClient();
+  return (organizationId: string) =>
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.customers.all(organizationId),
+    });
+}
+
+function cacheCustomer(
+  queryClient: ReturnType<typeof useQueryClient>,
+  organizationId: string,
+  data: CustomerResponse,
+) {
+  queryClient.setQueryData<CustomerResponse>(
+    queryKeys.customers.detail(organizationId, data.customer.id),
+    data,
+  );
+}
+
+export function useCreateCustomerMutation(organizationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: CreateCustomerInput) =>
+      createCustomer(organizationId, input),
+    onSuccess: async (data) => {
+      cacheCustomer(queryClient, organizationId, data);
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.customers.lists(organizationId),
+      });
+    },
+  });
+}
+
+export function useUpdateCustomerMutation(organizationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: UpdateCustomerInput;
+    }) => updateCustomer(organizationId, id, body),
+    onSuccess: async (data) => {
+      cacheCustomer(queryClient, organizationId, data);
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.customers.lists(organizationId),
+      });
+    },
+  });
+}
+
+export function useDeactivateCustomerMutation(organizationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => deactivateCustomer(organizationId, id),
+    onSuccess: async (data) => {
+      cacheCustomer(queryClient, organizationId, data);
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.customers.lists(organizationId),
+      });
+    },
+  });
 }
