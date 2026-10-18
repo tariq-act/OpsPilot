@@ -368,6 +368,28 @@ export interface CustomerResponse {
   customer: Customer;
 }
 
+export interface CreateCustomerInput {
+  name: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  notes?: string;
+}
+
+export interface UpdateCustomerInput {
+  name?: string;
+  phone?: string;
+  email?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  notes?: string | null;
+}
+
 export type TechnicianStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
 
 export interface Technician {
