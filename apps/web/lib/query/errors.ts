@@ -26,7 +26,16 @@ export function toUserErrorMessage(
       return "This record could not be found.";
     }
     if (error.status === 409) {
-      return "That action is not allowed for the current status.";
+      const message = error.body.message;
+      if (
+        typeof message === "string" &&
+        message.length > 0 &&
+        message.length <= 200 &&
+        !message.includes("\n")
+      ) {
+        return message;
+      }
+      return fallback;
     }
     if (error.status === 400) {
       const message = error.body.message;

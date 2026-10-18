@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { listJobs as listJobsResource } from "@/lib/api/jobs";
 import { organizationHeaders } from "@/lib/api/org-headers";
 import { listServiceRequests as listServiceRequestsResource } from "@/lib/api/service-requests";
+import { listTechnicians as listTechniciansResource } from "@/lib/api/technicians";
 import type {
   AuditLogListResponse,
   InvoiceListResponse,
@@ -29,9 +30,7 @@ export function listServiceRequests(
 export function listTechnicians(
   organizationId: string,
 ): Promise<TechnicianListResponse> {
-  return api.get<TechnicianListResponse>("/technicians", {
-    headers: organizationHeaders(organizationId),
-  });
+  return listTechniciansResource(organizationId);
 }
 
 export function listInvoices(
