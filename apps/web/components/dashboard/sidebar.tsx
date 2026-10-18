@@ -90,8 +90,12 @@ export function DashboardSidebar({ role }: { role: MemberRole }) {
   const router = useRouter();
   const { organizations, current, switchOrganization } = useOrg();
 
+  // Layout may pass a least-privilege default until orgs load; prefer the
+  // selected organization's membership role from OrgProvider.
+  const activeRole = current?.role ?? role;
+
   const visibleItems = navItems.filter(
-    (item) => !item.roles || item.roles.includes(role),
+    (item) => !item.roles || item.roles.includes(activeRole),
   );
 
   async function handleSignOut() {
