@@ -409,6 +409,30 @@ export interface TechnicianListResponse {
   technicians: Technician[];
 }
 
+export interface TechnicianResponse {
+  technician: Technician;
+}
+
+export interface ListTechniciansQuery {
+  status?: TechnicianStatus;
+}
+
+export interface CreateTechnicianInput {
+  userId: string;
+  employeeCode?: string;
+  phone?: string;
+  bio?: string;
+  hireDate?: string;
+}
+
+export interface UpdateTechnicianInput {
+  employeeCode?: string;
+  phone?: string | null;
+  bio?: string | null;
+  status?: TechnicianStatus;
+  hireDate?: string | null;
+}
+
 export type InvoiceStatus =
   "DRAFT" | "SENT" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "VOID";
 
