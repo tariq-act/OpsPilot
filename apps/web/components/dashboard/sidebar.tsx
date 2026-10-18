@@ -6,6 +6,7 @@ import {
   LuBell,
   LuBriefcase,
   LuBuilding2,
+  LuCalendarClock,
   LuChartBar,
   LuCompass,
   LuFileText,
@@ -38,6 +39,12 @@ const navItems: NavItem[] = [
     label: "Jobs",
     href: "/dashboard/jobs",
     icon: LuBriefcase,
+  },
+  {
+    label: "Dispatch",
+    href: "/dashboard/dispatch",
+    icon: LuCalendarClock,
+    roles: ["OWNER", "ADMIN", "DISPATCHER"],
   },
   {
     label: "Service Requests",
