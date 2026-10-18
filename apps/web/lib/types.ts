@@ -135,13 +135,31 @@ export type JobStatus =
   | "COMPLETED"
   | "CANCELLED";
 
+export type JobPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+
+export type JobAssignmentStatus =
+  | "ASSIGNED"
+  | "RELEASED"
+  | "CANCELLED";
+
 export interface Job {
   id: string;
   organizationId: string;
   customerId: string;
   requestId: string;
   title: string;
+  description: string | null;
+  priority: JobPriority;
   status: JobStatus;
+  location: string | null;
+  scheduledStart: string | null;
+  scheduledEnd: string | null;
+  estimatedDuration: number | null;
+  actualStart: string | null;
+  actualEnd: string | null;
+  completedAt: string | null;
+  completionSummary: string | null;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -150,10 +168,118 @@ export interface JobListResponse {
   jobs: Job[];
 }
 
+export interface JobResponse {
+  job: Job;
+}
+
 export interface ListJobsQuery {
   status?: JobStatus;
+  priority?: JobPriority;
   customerId?: string;
   requestId?: string;
+  fromDate?: string;
+  toDate?: string;
+  technicianId?: string;
+}
+
+export interface CreateJobInput {
+  customerId: string;
+  requestId: string;
+  title?: string;
+  description?: string;
+  priority?: JobPriority;
+  location?: string;
+  estimatedDuration?: number;
+}
+
+export interface UpdateJobInput {
+  title?: string;
+  description?: string | null;
+  priority?: JobPriority;
+  status?: JobStatus;
+  location?: string | null;
+  estimatedDuration?: number | null;
+  actualStart?: string | null;
+  actualEnd?: string | null;
+}
+
+export interface ScheduleJobInput {
+  scheduledStart: string;
+  scheduledEnd: string;
+  location?: string;
+  allowOverlap?: boolean;
+}
+
+export interface AssignTechniciansInput {
+  technicianIds: string[];
+  allowOverlap?: boolean;
+}
+
+export interface ReassignTechnicianInput {
+  technicianId: string;
+  allowOverlap?: boolean;
+}
+
+export interface UpdateAssignmentInput {
+  status: "RELEASED" | "CANCELLED";
+}
+
+export interface UpdateJobProgressInput {
+  status: "EN_ROUTE" | "ARRIVED" | "IN_PROGRESS";
+  note?: string;
+}
+
+export interface CompleteJobInput {
+  completionSummary: string;
+  note?: string;
+}
+
+export interface JobAssignment {
+  id: string;
+  organizationId: string;
+  jobId: string;
+  technicianId: string;
+  status: JobAssignmentStatus;
+  assignedBy: string;
+  assignedAt: string;
+  releasedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JobAssignmentListResponse {
+  assignments: JobAssignment[];
+}
+
+export interface JobAssignmentResponse {
+  assignment: JobAssignment;
+}
+
+export interface AssignTechniciansResponse {
+  job: Job;
+  assignments: JobAssignment[];
+}
+
+export interface ReassignTechnicianResponse {
+  job: Job;
+  released: JobAssignment;
+  assignment: JobAssignment;
+}
+
+export interface JobActivity {
+  id: string;
+  organizationId: string;
+  jobId: string;
+  action: string;
+  fromStatus: JobStatus | null;
+  toStatus: JobStatus | null;
+  message: string | null;
+  actorUserId: string;
+  createdAt: string;
+}
+
+export interface JobActivityListResponse {
+  activities: JobActivity[];
 }
 
 export type ServiceRequestStatus =
@@ -247,7 +373,12 @@ export type TechnicianStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
 export interface Technician {
   id: string;
   organizationId: string;
+  userId: string;
+  employeeCode: string;
+  phone: string | null;
+  bio: string | null;
   status: TechnicianStatus;
+  hireDate: string | null;
   createdAt: string;
   updatedAt: string;
 }

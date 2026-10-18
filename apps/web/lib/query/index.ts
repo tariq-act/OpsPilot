@@ -13,7 +13,23 @@ export {
   useOrganizationsQuery,
 } from "@/lib/query/organizations";
 
-export { jobQueries, useInvalidateJobs, useJobsQuery } from "@/lib/query/jobs";
+export {
+  jobQueries,
+  useAssignTechniciansMutation,
+  useCancelJobMutation,
+  useCompleteJobMutation,
+  useCreateJobMutation,
+  useInvalidateJobs,
+  useJobActivitiesQuery,
+  useJobAssignmentsQuery,
+  useJobQuery,
+  useJobsQuery,
+  useReassignTechnicianMutation,
+  useScheduleJobMutation,
+  useUpdateJobAssignmentMutation,
+  useUpdateJobMutation,
+  useUpdateJobProgressMutation,
+} from "@/lib/query/jobs";
 
 export {
   customerQueries,
