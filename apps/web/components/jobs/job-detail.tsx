@@ -38,9 +38,11 @@ import {
   shortId,
 } from "@/lib/format";
 import {
+  getPrimaryExecutionActionLabel,
   getPrimaryJobActionLabel,
   JOB_STATUS_LABEL,
 } from "@/lib/job-status";
+import { isJobManagerRole, isTechnicianRole } from "@/lib/member-roles";
 import { useCustomerQuery } from "@/lib/query/customers";
 import { toUserErrorMessage } from "@/lib/query/errors";
 import {
@@ -73,6 +75,8 @@ export function JobDetail({ id }: { id: string }) {
   const { current } = useOrg();
   const organizationId = current?.id ?? "";
   const timeZone = current?.timezone ?? "UTC";
+  const isManager = isJobManagerRole(current?.role);
+  const isTechnician = isTechnicianRole(current?.role);
 
   const detailQuery = useJobQuery(organizationId, id);
   const job = detailQuery.job;
@@ -210,6 +214,7 @@ export function JobDetail({ id }: { id: string }) {
     resetFeedback();
 
     if (job.status === "DRAFT") {
+      if (!isManager) return;
       openScheduleDialog(job);
       return;
     }
@@ -401,15 +406,22 @@ export function JobDetail({ id }: { id: string }) {
   const customer = customerQuery.customer;
   const address = customer ? formatCustomerAddress(customer) : null;
   const serviceRequest = requestQuery.serviceRequest;
-  const primaryLabel = getPrimaryJobActionLabel(job.status);
+  const primaryLabel = isManager
+    ? getPrimaryJobActionLabel(job.status)
+    : getPrimaryExecutionActionLabel(job.status);
   const canCancel =
-    job.status !== "COMPLETED" && job.status !== "CANCELLED";
+    isManager &&
+    job.status !== "COMPLETED" &&
+    job.status !== "CANCELLED";
   const canReschedule =
+    isManager &&
     job.status !== "DRAFT" &&
     job.status !== "COMPLETED" &&
     job.status !== "CANCELLED";
   const canManageAssignment =
-    job.status !== "COMPLETED" && job.status !== "CANCELLED";
+    isManager &&
+    job.status !== "COMPLETED" &&
+    job.status !== "CANCELLED";
 
   return (
     <div className="flex flex-col gap-6">
@@ -429,6 +441,14 @@ export function JobDetail({ id }: { id: string }) {
           description={`Job ${shortId(job.id)}`}
           actions={
             <div className="flex flex-wrap gap-2">
+              {isTechnician ? (
+                <Link
+                  href={`/dashboard/my-work/${job.id}`}
+                  className={buttonVariants()}
+                >
+                  Open execution
+                </Link>
+              ) : null}
               {primaryLabel ? (
                 <Button
                   type="button"
@@ -464,12 +484,14 @@ export function JobDetail({ id }: { id: string }) {
                     : "Assign technician"}
                 </Button>
               ) : null}
-              <Link
-                href="/dashboard/dispatch"
-                className={buttonVariants({ variant: "outline" })}
-              >
-                Open dispatch
-              </Link>
+              {isManager ? (
+                <Link
+                  href="/dashboard/dispatch"
+                  className={buttonVariants({ variant: "outline" })}
+                >
+                  Open dispatch
+                </Link>
+              ) : null}
               {canCancel ? (
                 <Button
                   type="button"

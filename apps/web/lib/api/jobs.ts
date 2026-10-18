@@ -10,10 +10,17 @@ import type {
   AssignTechniciansResponse,
   CompleteJobInput,
   CreateJobInput,
+  CreateJobNoteInput,
   JobActivityListResponse,
   JobAssignmentListResponse,
   JobAssignmentResponse,
+  JobExecutionResponse,
   JobListResponse,
+  JobNoteListResponse,
+  JobNoteResponse,
+  JobPhotoKind,
+  JobPhotoListResponse,
+  JobPhotoResponse,
   JobResponse,
   ListJobsQuery,
   ReassignTechnicianInput,
@@ -175,6 +182,67 @@ export function listJobActivities(
   id: string,
 ): Promise<JobActivityListResponse> {
   return api.get<JobActivityListResponse>(`/jobs/${id}/activity`, {
+    headers: organizationHeaders(organizationId),
+  });
+}
+
+export function getJobExecution(
+  organizationId: string,
+  id: string,
+): Promise<JobExecutionResponse> {
+  return api.get<JobExecutionResponse>(`/jobs/${id}/execution`, {
+    headers: organizationHeaders(organizationId),
+  });
+}
+
+export function listJobNotes(
+  organizationId: string,
+  id: string,
+): Promise<JobNoteListResponse> {
+  return api.get<JobNoteListResponse>(`/jobs/${id}/notes`, {
+    headers: organizationHeaders(organizationId),
+  });
+}
+
+export function createJobNote(
+  organizationId: string,
+  id: string,
+  body: CreateJobNoteInput,
+): Promise<JobNoteResponse> {
+  return api.post<JobNoteResponse>(`/jobs/${id}/notes`, body, {
+    headers: organizationHeaders(organizationId),
+  });
+}
+
+export function listJobPhotos(
+  organizationId: string,
+  id: string,
+): Promise<JobPhotoListResponse> {
+  return api.get<JobPhotoListResponse>(`/jobs/${id}/photos`, {
+    headers: organizationHeaders(organizationId),
+  });
+}
+
+export function uploadJobPhoto(
+  organizationId: string,
+  id: string,
+  kind: JobPhotoKind,
+  file: File,
+): Promise<JobPhotoResponse> {
+  const form = new FormData();
+  form.set("kind", kind);
+  form.set("file", file);
+  return api.postForm<JobPhotoResponse>(`/jobs/${id}/photos`, form, {
+    headers: organizationHeaders(organizationId),
+  });
+}
+
+export function getJobPhotoContent(
+  organizationId: string,
+  id: string,
+  photoId: string,
+): Promise<Blob> {
+  return api.getBlob(`/jobs/${id}/photos/${photoId}/content`, {
     headers: organizationHeaders(organizationId),
   });
 }

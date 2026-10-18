@@ -12,9 +12,14 @@ import {
   cancelJob,
   completeJob,
   createJob,
+  createJobNote,
   getJob,
+  getJobExecution,
+  getJobPhotoContent,
   listJobActivities,
   listJobAssignments,
+  listJobNotes,
+  listJobPhotos,
   listJobs,
   reassignTechnician,
   rescheduleJob,
@@ -22,6 +27,7 @@ import {
   updateJob,
   updateJobAssignment,
   updateJobProgress,
+  uploadJobPhoto,
 } from "@/lib/api/jobs";
 import { queryKeys } from "@/lib/query/keys";
 import { getServerQueryState } from "@/lib/query/query-state";
@@ -29,7 +35,9 @@ import type {
   AssignTechniciansInput,
   CompleteJobInput,
   CreateJobInput,
+  CreateJobNoteInput,
   JobListResponse,
+  JobPhotoKind,
   JobResponse,
   ListJobsQuery,
   ReassignTechnicianInput,
@@ -64,6 +72,25 @@ async function invalidateJobViews(
       queryKey: queryKeys.jobs.detail(organizationId, jobId),
     });
   }
+}
+
+async function invalidateJobExecution(
+  queryClient: ReturnType<typeof useQueryClient>,
+  organizationId: string,
+  jobId: string,
+) {
+  await queryClient.invalidateQueries({
+    queryKey: queryKeys.jobs.execution(organizationId, jobId),
+  });
+  await queryClient.invalidateQueries({
+    queryKey: queryKeys.jobs.notes(organizationId, jobId),
+  });
+  await queryClient.invalidateQueries({
+    queryKey: queryKeys.jobs.photos(organizationId, jobId),
+  });
+  await queryClient.invalidateQueries({
+    queryKey: queryKeys.jobs.activities(organizationId, jobId),
+  });
 }
 
 function cacheJob(
@@ -104,6 +131,36 @@ export const jobQueries = {
       queryKey: queryKeys.jobs.activities(organizationId, id),
       queryFn: () => listJobActivities(organizationId, id),
       enabled: Boolean(organizationId) && Boolean(id),
+    }),
+
+  execution: (organizationId: string, id: string) =>
+    queryOptions({
+      queryKey: queryKeys.jobs.execution(organizationId, id),
+      queryFn: () => getJobExecution(organizationId, id),
+      enabled: Boolean(organizationId) && Boolean(id),
+    }),
+
+  notes: (organizationId: string, id: string) =>
+    queryOptions({
+      queryKey: queryKeys.jobs.notes(organizationId, id),
+      queryFn: () => listJobNotes(organizationId, id),
+      enabled: Boolean(organizationId) && Boolean(id),
+    }),
+
+  photos: (organizationId: string, id: string) =>
+    queryOptions({
+      queryKey: queryKeys.jobs.photos(organizationId, id),
+      queryFn: () => listJobPhotos(organizationId, id),
+      enabled: Boolean(organizationId) && Boolean(id),
+    }),
+
+  photoContent: (organizationId: string, id: string, photoId: string) =>
+    queryOptions({
+      queryKey: queryKeys.jobs.photoContent(organizationId, id, photoId),
+      queryFn: () => getJobPhotoContent(organizationId, id, photoId),
+      enabled:
+        Boolean(organizationId) && Boolean(id) && Boolean(photoId),
+      staleTime: 5 * 60 * 1000,
     }),
 };
 
@@ -155,6 +212,63 @@ export function useJobActivitiesQuery(organizationId: string, id: string) {
     activities: result.data?.activities ?? [],
     server: state,
   };
+}
+
+export function useJobExecutionQuery(organizationId: string, id: string) {
+  const result = useQuery(jobQueries.execution(organizationId, id));
+  const state = getServerQueryState(result);
+
+  return {
+    ...result,
+    job: result.data?.job ?? null,
+    notes: result.data?.notes ?? [],
+    photos: result.data?.photos ?? [],
+    activities: result.data?.activities ?? [],
+    server: state,
+  };
+}
+
+export function useJobNotesQuery(organizationId: string, id: string) {
+  const result = useQuery(jobQueries.notes(organizationId, id));
+  const state = getServerQueryState(result, (data) => data.notes.length === 0);
+
+  return {
+    ...result,
+    notes: result.data?.notes ?? [],
+    server: state,
+  };
+}
+
+export function useJobPhotosQuery(organizationId: string, id: string) {
+  const result = useQuery(jobQueries.photos(organizationId, id));
+  const state = getServerQueryState(
+    result,
+    (data) => data.photos.length === 0,
+  );
+
+  return {
+    ...result,
+    photos: result.data?.photos ?? [],
+    server: state,
+  };
+}
+
+export function useJobPhotoContentQuery(
+  organizationId: string,
+  id: string,
+  photoId: string,
+  enabled = true,
+) {
+  const result = useQuery({
+    ...jobQueries.photoContent(organizationId, id, photoId),
+    enabled:
+      enabled &&
+      Boolean(organizationId) &&
+      Boolean(id) &&
+      Boolean(photoId),
+  });
+
+  return result;
 }
 
 export function useInvalidateJobs() {
@@ -323,9 +437,7 @@ export function useUpdateJobProgressMutation(organizationId: string) {
     onSuccess: async (data) => {
       cacheJob(queryClient, organizationId, data);
       await invalidateJobViews(queryClient, organizationId, data.job.id);
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.jobs.activities(organizationId, data.job.id),
-      });
+      await invalidateJobExecution(queryClient, organizationId, data.job.id);
     },
   });
 }
@@ -339,9 +451,40 @@ export function useCompleteJobMutation(organizationId: string) {
     onSuccess: async (data) => {
       cacheJob(queryClient, organizationId, data);
       await invalidateJobViews(queryClient, organizationId, data.job.id);
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.jobs.activities(organizationId, data.job.id),
-      });
+      await invalidateJobExecution(queryClient, organizationId, data.job.id);
+    },
+  });
+}
+
+export function useCreateJobNoteMutation(organizationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: CreateJobNoteInput }) =>
+      createJobNote(organizationId, id, body),
+    onSuccess: async (_data, variables) => {
+      await invalidateJobExecution(queryClient, organizationId, variables.id);
+      await invalidateJobViews(queryClient, organizationId, variables.id);
+    },
+  });
+}
+
+export function useUploadJobPhotoMutation(organizationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      kind,
+      file,
+    }: {
+      id: string;
+      kind: JobPhotoKind;
+      file: File;
+    }) => uploadJobPhoto(organizationId, id, kind, file),
+    onSuccess: async (_data, variables) => {
+      await invalidateJobExecution(queryClient, organizationId, variables.id);
+      await invalidateJobViews(queryClient, organizationId, variables.id);
     },
   });
 }

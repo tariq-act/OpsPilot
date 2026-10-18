@@ -80,3 +80,39 @@ export function getPrimaryJobActionLabel(
       return null;
   }
 }
+
+/**
+ * Field technician primary action. Skips manager-only schedule.
+ * Matches progress/complete endpoints only.
+ */
+export function getPrimaryExecutionActionLabel(
+  status: JobStatus,
+): string | null {
+  switch (status) {
+    case "CONFIRMED":
+      return "Start route";
+    case "EN_ROUTE":
+      return "Mark arrived";
+    case "ARRIVED":
+      return "Start work";
+    case "IN_PROGRESS":
+      return "Complete job";
+    default:
+      return null;
+  }
+}
+
+export function getNextExecutionProgressStatus(
+  status: JobStatus,
+): ExecutionProgressStatus | null {
+  switch (status) {
+    case "CONFIRMED":
+      return "EN_ROUTE";
+    case "EN_ROUTE":
+      return "ARRIVED";
+    case "ARRIVED":
+      return "IN_PROGRESS";
+    default:
+      return null;
+  }
+}

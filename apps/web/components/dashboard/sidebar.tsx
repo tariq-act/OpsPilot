@@ -8,6 +8,7 @@ import {
   LuBuilding2,
   LuCalendarClock,
   LuChartBar,
+  LuClipboardList,
   LuCompass,
   LuFileText,
   LuLogOut,
@@ -35,6 +36,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
+  {
+    label: "My Work",
+    href: "/dashboard/my-work",
+    icon: LuClipboardList,
+    roles: ["TECHNICIAN"],
+  },
   {
     label: "Jobs",
     href: "/dashboard/jobs",

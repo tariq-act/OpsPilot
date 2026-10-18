@@ -282,6 +282,56 @@ export interface JobActivityListResponse {
   activities: JobActivity[];
 }
 
+export type JobPhotoKind = "BEFORE" | "AFTER" | "OTHER";
+
+export interface JobNote {
+  id: string;
+  organizationId: string;
+  jobId: string;
+  body: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface JobNoteListResponse {
+  notes: JobNote[];
+}
+
+export interface JobNoteResponse {
+  note: JobNote;
+}
+
+export interface CreateJobNoteInput {
+  body: string;
+}
+
+export interface JobPhoto {
+  id: string;
+  organizationId: string;
+  jobId: string;
+  kind: JobPhotoKind;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedBy: string;
+  createdAt: string;
+}
+
+export interface JobPhotoListResponse {
+  photos: JobPhoto[];
+}
+
+export interface JobPhotoResponse {
+  photo: JobPhoto;
+}
+
+export interface JobExecutionResponse {
+  job: Job;
+  notes: JobNote[];
+  photos: JobPhoto[];
+  activities: JobActivity[];
+}
+
 export type ServiceRequestStatus =
   "NEW" | "IN_REVIEW" | "ACCEPTED" | "REJECTED" | "CANCELLED";
 
