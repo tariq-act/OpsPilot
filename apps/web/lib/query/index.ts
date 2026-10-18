@@ -53,8 +53,12 @@ export {
 
 export {
   technicianQueries,
+  useCreateTechnicianMutation,
+  useDeactivateTechnicianMutation,
   useInvalidateTechnicians,
+  useTechnicianQuery,
   useTechniciansQuery,
+  useUpdateTechnicianMutation,
 } from "@/lib/query/technicians";
 
 export {
