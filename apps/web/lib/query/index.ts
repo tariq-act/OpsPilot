@@ -32,6 +32,12 @@ export {
 } from "@/lib/query/jobs";
 
 export {
+  useDispatchDay,
+  type DispatchDayData,
+  type TechnicianDaySchedule,
+} from "@/lib/query/dispatch";
+
+export {
   customerQueries,
   useCreateCustomerMutation,
   useCustomerQuery,

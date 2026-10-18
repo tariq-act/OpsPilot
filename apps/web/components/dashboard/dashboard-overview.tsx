@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { type ElementType, type ReactNode } from "react";
-import { LuBell, LuBriefcase, LuUsers, LuWrench } from "react-icons/lu";
+import {
+  LuBell,
+  LuBriefcase,
+  LuCalendarClock,
+  LuUsers,
+  LuWrench,
+} from "react-icons/lu";
 
 import { useOrg } from "@/components/providers/org-provider";
 import { buttonVariants } from "@/components/ui/button";
@@ -24,6 +30,7 @@ import type {
 const RECENT_LIMIT = 8;
 
 const JOBS_HREF = "/dashboard/jobs";
+const DISPATCH_HREF = "/dashboard/dispatch";
 const SERVICE_REQUESTS_HREF = "/dashboard/service-requests";
 const CUSTOMERS_HREF = "/dashboard/customers";
 const TECHNICIANS_HREF = "/dashboard/technicians";
@@ -53,18 +60,30 @@ const LOADING_KPIS = [
   { label: "Pending Invoices", href: INVOICES_HREF },
 ] as const;
 
-const QUICK_ACTIONS: { href: string; label: string; icon: ElementType }[] = [
+const QUICK_ACTIONS: {
+  href: string;
+  label: string;
+  icon: ElementType;
+  roles?: MemberRole[];
+}[] = [
   {
     href: `${SERVICE_REQUESTS_HREF}?create=1`,
     label: "New Service Request",
     icon: LuBell,
   },
   { href: `${JOBS_HREF}?create=1`, label: "Create Job", icon: LuBriefcase },
+  {
+    href: DISPATCH_HREF,
+    label: "Open Dispatch",
+    icon: LuCalendarClock,
+    roles: ["OWNER", "ADMIN", "DISPATCHER"],
+  },
   { href: `${CUSTOMERS_HREF}?create=1`, label: "Add Customer", icon: LuUsers },
   {
     href: `${TECHNICIANS_HREF}?create=1`,
     label: "Add Technician",
     icon: LuWrench,
+    roles: ["OWNER", "ADMIN", "DISPATCHER"],
   },
 ];
 
@@ -369,7 +388,9 @@ function DashboardData({
       <section className="rounded-2xl border border-border bg-card p-6">
         <h2 className="text-sm font-semibold text-foreground">Quick actions</h2>
         <div className="mt-4 flex flex-wrap gap-2">
-          {QUICK_ACTIONS.map((action) => {
+          {QUICK_ACTIONS.filter(
+            (action) => !action.roles || action.roles.includes(role),
+          ).map((action) => {
             const Icon = action.icon;
             return (
               <Link
