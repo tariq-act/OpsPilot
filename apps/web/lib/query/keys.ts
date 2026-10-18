@@ -42,6 +42,18 @@ export const queryKeys = {
       [...queryKeys.jobs.detail(organizationId, id), "assignments"] as const,
     activities: (organizationId: string, id: string) =>
       [...queryKeys.jobs.detail(organizationId, id), "activities"] as const,
+    notes: (organizationId: string, id: string) =>
+      [...queryKeys.jobs.detail(organizationId, id), "notes"] as const,
+    photos: (organizationId: string, id: string) =>
+      [...queryKeys.jobs.detail(organizationId, id), "photos"] as const,
+    execution: (organizationId: string, id: string) =>
+      [...queryKeys.jobs.detail(organizationId, id), "execution"] as const,
+    photoContent: (organizationId: string, id: string, photoId: string) =>
+      [
+        ...queryKeys.jobs.photos(organizationId, id),
+        "content",
+        photoId,
+      ] as const,
   },
 
   serviceRequests: {

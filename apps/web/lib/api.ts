@@ -65,14 +65,22 @@ async function request<T>(
     ...extraHeaders,
   };
 
-  if (body !== undefined) {
+  const isFormData =
+    typeof FormData !== "undefined" && body instanceof FormData;
+
+  if (body !== undefined && !isFormData) {
     headers["Content-Type"] = "application/json";
   }
 
   const response = await fetch(url, {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body:
+      body === undefined
+        ? undefined
+        : isFormData
+          ? (body as FormData)
+          : JSON.stringify(body),
     credentials: "include",
     next,
   });
@@ -97,6 +105,38 @@ async function request<T>(
   }
 
   return response.json() as Promise<T>;
+}
+
+async function requestBlob(
+  path: string,
+  { headers: extraHeaders, next }: Omit<RequestOptions, "method" | "body"> = {},
+): Promise<Blob> {
+  const url = `${API_BASE_URL}${path}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "*/*",
+      ...extraHeaders,
+    },
+    credentials: "include",
+    next,
+  });
+
+  if (!response.ok) {
+    let errorBody: ApiErrorBody;
+    try {
+      errorBody = (await response.json()) as ApiErrorBody;
+    } catch {
+      errorBody = {
+        statusCode: response.status,
+        message: response.statusText || "Unknown error",
+        error: "Unknown",
+      };
+    }
+    throw new ApiError(response.status, errorBody);
+  }
+
+  return response.blob();
 }
 
 // ---------------------------------------------------------------------------
@@ -134,5 +174,19 @@ export const api = {
 
   delete<T>(path: string, options?: Omit<RequestOptions, "method" | "body">) {
     return request<T>(path, { ...options, method: "DELETE" });
+  },
+
+  /** Multipart POST. Do not set Content-Type; the browser sets the boundary. */
+  postForm<T>(
+    path: string,
+    body: FormData,
+    options?: Omit<RequestOptions, "method" | "body">,
+  ) {
+    return request<T>(path, { ...options, method: "POST", body });
+  },
+
+  /** Authenticated binary download (e.g. job photo content). */
+  getBlob(path: string, options?: Omit<RequestOptions, "method" | "body">) {
+    return requestBlob(path, options);
   },
 };

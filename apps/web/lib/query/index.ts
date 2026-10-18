@@ -19,9 +19,14 @@ export {
   useCancelJobMutation,
   useCompleteJobMutation,
   useCreateJobMutation,
+  useCreateJobNoteMutation,
   useInvalidateJobs,
   useJobActivitiesQuery,
   useJobAssignmentsQuery,
+  useJobExecutionQuery,
+  useJobNotesQuery,
+  useJobPhotoContentQuery,
+  useJobPhotosQuery,
   useJobQuery,
   useJobsQuery,
   useReassignTechnicianMutation,
@@ -29,6 +34,7 @@ export {
   useUpdateJobAssignmentMutation,
   useUpdateJobMutation,
   useUpdateJobProgressMutation,
+  useUploadJobPhotoMutation,
 } from "@/lib/query/jobs";
 
 export {
