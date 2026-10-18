@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { JobPriorityBadge, JobStatusBadge } from "@/components/jobs/job-badges";
 import { useOrg } from "@/components/providers/org-provider";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ApiError } from "@/lib/api";
+import {
+  fromDatetimeLocalValue,
+  toDatetimeLocalValue,
+} from "@/lib/dispatch-date";
 import {
   formatCustomerAddress,
   formatDateTime,
@@ -49,22 +55,11 @@ import {
   useUpdateJobAssignmentMutation,
   useUpdateJobProgressMutation,
 } from "@/lib/query/jobs";
+import { useOrganizationMembersQuery } from "@/lib/query/organizations";
 import { useServiceRequestQuery } from "@/lib/query/service-requests";
 import { useTechniciansQuery } from "@/lib/query/technicians";
 import { cn } from "@/lib/utils";
 import type { Job, JobStatus, UpdateJobProgressInput } from "@/lib/types";
-
-function toDatetimeLocalValue(iso: string | null): string {
-  if (!iso) return "";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function fromDatetimeLocalValue(value: string): string {
-  return new Date(value).toISOString();
-}
 
 function activityLabel(action: string): string {
   return action
@@ -93,6 +88,7 @@ export function JobDetail({ id }: { id: string }) {
   const assignmentsQuery = useJobAssignmentsQuery(organizationId, id);
   const activitiesQuery = useJobActivitiesQuery(organizationId, id);
   const techniciansQuery = useTechniciansQuery(organizationId);
+  const membersQuery = useOrganizationMembersQuery(organizationId);
 
   const scheduleMutation = useScheduleJobMutation(organizationId);
   const progressMutation = useUpdateJobProgressMutation(organizationId);
@@ -109,10 +105,12 @@ export function JobDetail({ id }: { id: string }) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [assignConfirmOpen, setAssignConfirmOpen] = useState(false);
 
   const [scheduledStart, setScheduledStart] = useState("");
   const [scheduledEnd, setScheduledEnd] = useState("");
   const [scheduleLocation, setScheduleLocation] = useState("");
+  const [allowOverlap, setAllowOverlap] = useState(false);
   const [completionSummary, setCompletionSummary] = useState("");
   const [completeNote, setCompleteNote] = useState("");
   const [technicianId, setTechnicianId] = useState<string | null>(null);
@@ -127,12 +125,22 @@ export function JobDetail({ id }: { id: string }) {
     updateAssignmentMutation.isPending;
 
   const technicianLabelById = useMemo(() => {
+    const memberByUserId = new Map(
+      membersQuery.members.map((member) => [
+        member.userId,
+        member.userName,
+      ] as const),
+    );
     const map = new Map<string, string>();
     for (const technician of techniciansQuery.technicians) {
-      map.set(technician.id, technician.employeeCode);
+      const name = memberByUserId.get(technician.userId);
+      map.set(
+        technician.id,
+        name ? `${name} (${technician.employeeCode})` : technician.employeeCode,
+      );
     }
     return map;
-  }, [techniciansQuery.technicians]);
+  }, [membersQuery.members, techniciansQuery.technicians]);
 
   const activeAssignments = assignmentsQuery.assignments.filter(
     (assignment) => assignment.status === "ASSIGNED",
@@ -150,6 +158,7 @@ export function JobDetail({ id }: { id: string }) {
     setScheduledStart(toDatetimeLocalValue(current.scheduledStart));
     setScheduledEnd(toDatetimeLocalValue(current.scheduledEnd));
     setScheduleLocation(current.location ?? "");
+    setAllowOverlap(false);
     setScheduleOpen(true);
   }
 
@@ -174,6 +183,7 @@ export function JobDetail({ id }: { id: string }) {
           scheduledStart: start,
           scheduledEnd: end,
           location: scheduleLocation.trim() || undefined,
+          allowOverlap: allowOverlap || undefined,
         },
       });
       setScheduleOpen(false);
@@ -183,9 +193,15 @@ export function JobDetail({ id }: { id: string }) {
           : "Schedule updated.",
       );
     } catch (error) {
-      setActionError(
-        toUserErrorMessage(error, "Unable to save the schedule."),
-      );
+      if (error instanceof ApiError && error.status === 409 && !allowOverlap) {
+        setActionError(
+          `${toUserErrorMessage(error, "Scheduling conflict detected.")} Enable allow overlap to submit anyway.`,
+        );
+      } else {
+        setActionError(
+          toUserErrorMessage(error, "Unable to save the schedule."),
+        );
+      }
     }
   }
 
@@ -260,6 +276,19 @@ export function JobDetail({ id }: { id: string }) {
     }
   }
 
+  function requestAssign() {
+    resetFeedback();
+    if (!technicianId) {
+      setActionError("Select a technician to assign.");
+      return;
+    }
+    if (!job?.scheduledStart || !job.scheduledEnd) {
+      setActionError("Schedule the job before assigning a technician.");
+      return;
+    }
+    setAssignConfirmOpen(true);
+  }
+
   async function submitAssign() {
     resetFeedback();
     if (!technicianId) {
@@ -272,22 +301,37 @@ export function JobDetail({ id }: { id: string }) {
         await reassignMutation.mutateAsync({
           id,
           assignmentId: active.id,
-          body: { technicianId },
+          body: {
+            technicianId,
+            allowOverlap: allowOverlap || undefined,
+          },
         });
         setActionSuccess("Technician reassigned.");
       } else {
         await assignMutation.mutateAsync({
           id,
-          body: { technicianIds: [technicianId] },
+          body: {
+            technicianIds: [technicianId],
+            allowOverlap: allowOverlap || undefined,
+          },
         });
         setActionSuccess("Technician assigned.");
       }
+      setAssignConfirmOpen(false);
       setAssignOpen(false);
       setTechnicianId(null);
+      setAllowOverlap(false);
     } catch (error) {
-      setActionError(
-        toUserErrorMessage(error, "Unable to update technician assignment."),
-      );
+      if (error instanceof ApiError && error.status === 409 && !allowOverlap) {
+        setActionError(
+          `${toUserErrorMessage(error, "Assignment conflict detected.")} Enable allow overlap to submit anyway.`,
+        );
+      } else {
+        setActionError(
+          toUserErrorMessage(error, "Unable to update technician assignment."),
+        );
+      }
+      setAssignConfirmOpen(false);
     }
   }
 
@@ -411,6 +455,7 @@ export function JobDetail({ id }: { id: string }) {
                   disabled={pending}
                   onClick={() => {
                     setTechnicianId(null);
+                    setAllowOverlap(false);
                     setAssignOpen(true);
                   }}
                 >
@@ -419,6 +464,12 @@ export function JobDetail({ id }: { id: string }) {
                     : "Assign technician"}
                 </Button>
               ) : null}
+              <Link
+                href="/dashboard/dispatch"
+                className={buttonVariants({ variant: "outline" })}
+              >
+                Open dispatch
+              </Link>
               {canCancel ? (
                 <Button
                   type="button"
@@ -452,9 +503,11 @@ export function JobDetail({ id }: { id: string }) {
         scheduledStart={scheduledStart}
         scheduledEnd={scheduledEnd}
         location={scheduleLocation}
+        allowOverlap={allowOverlap}
         onStartChange={setScheduledStart}
         onEndChange={setScheduledEnd}
         onLocationChange={setScheduleLocation}
+        onAllowOverlapChange={setAllowOverlap}
         onSubmit={() => void submitSchedule()}
         isDraft={job.status === "DRAFT"}
       />
@@ -474,12 +527,61 @@ export function JobDetail({ id }: { id: string }) {
         open={assignOpen}
         onOpenChange={setAssignOpen}
         pending={assignMutation.isPending || reassignMutation.isPending}
-        technicians={activeTechnicians}
+        technicians={activeTechnicians.map((technician) => ({
+          id: technician.id,
+          label:
+            technicianLabelById.get(technician.id) ?? technician.employeeCode,
+        }))}
         value={technicianId}
         onValueChange={setTechnicianId}
-        onSubmit={() => void submitAssign()}
+        allowOverlap={allowOverlap}
+        onAllowOverlapChange={setAllowOverlap}
+        onSubmit={requestAssign}
         isReassign={activeAssignments.length > 0}
       />
+
+      <Dialog
+        open={assignConfirmOpen}
+        onOpenChange={(open) => {
+          if (assignMutation.isPending || reassignMutation.isPending) return;
+          setAssignConfirmOpen(open);
+        }}
+      >
+        <DialogContent showCloseButton className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {activeAssignments.length > 0
+                ? "Confirm reassignment"
+                : "Confirm assignment"}
+            </DialogTitle>
+            <DialogDescription>
+              {technicianId
+                ? `${activeAssignments.length > 0 ? "Reassign" : "Assign"} ${technicianLabelById.get(technicianId) ?? "this technician"} to this job.`
+                : "Confirm this change."}
+              {allowOverlap ? " Overlap will be allowed." : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAssignConfirmOpen(false)}
+              disabled={assignMutation.isPending || reassignMutation.isPending}
+            >
+              Back
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void submitAssign()}
+              disabled={assignMutation.isPending || reassignMutation.isPending}
+            >
+              {assignMutation.isPending || reassignMutation.isPending
+                ? "Saving…"
+                : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={cancelOpen}
@@ -743,9 +845,11 @@ function ScheduleDialog({
   scheduledStart,
   scheduledEnd,
   location,
+  allowOverlap,
   onStartChange,
   onEndChange,
   onLocationChange,
+  onAllowOverlapChange,
   onSubmit,
   isDraft,
 }: {
@@ -755,9 +859,11 @@ function ScheduleDialog({
   scheduledStart: string;
   scheduledEnd: string;
   location: string;
+  allowOverlap: boolean;
   onStartChange: (value: string) => void;
   onEndChange: (value: string) => void;
   onLocationChange: (value: string) => void;
+  onAllowOverlapChange: (value: boolean) => void;
   onSubmit: () => void;
   isDraft: boolean;
 }) {
@@ -811,6 +917,16 @@ function ScheduleDialog({
               placeholder="Optional"
             />
           </div>
+          <Label className="flex cursor-pointer items-center gap-2 font-normal">
+            <Checkbox
+              checked={allowOverlap}
+              onCheckedChange={(checked) =>
+                onAllowOverlapChange(checked === true)
+              }
+              disabled={pending}
+            />
+            Allow schedule overlap
+          </Label>
         </div>
         <DialogFooter>
           <Button
@@ -915,15 +1031,19 @@ function AssignDialog({
   technicians,
   value,
   onValueChange,
+  allowOverlap,
+  onAllowOverlapChange,
   onSubmit,
   isReassign,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pending: boolean;
-  technicians: { id: string; employeeCode: string }[];
+  technicians: { id: string; label: string }[];
   value: string | null;
   onValueChange: (value: string | null) => void;
+  allowOverlap: boolean;
+  onAllowOverlapChange: (value: boolean) => void;
   onSubmit: () => void;
   isReassign: boolean;
 }) {
@@ -941,32 +1061,45 @@ function AssignDialog({
             {isReassign ? "Change technician" : "Assign technician"}
           </DialogTitle>
           <DialogDescription>
-            Choose an active technician in this organization.
+            Choose an active technician in this organization. You will confirm
+            before the assignment is saved.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="job-assign-technician">Technician</Label>
-          <Select
-            value={value}
-            onValueChange={(next) => onValueChange(next)}
-            disabled={pending}
-          >
-            <SelectTrigger id="job-assign-technician" className="w-full">
-              <SelectValue placeholder="Select a technician" />
-            </SelectTrigger>
-            <SelectContent>
-              {technicians.map((technician) => (
-                <SelectItem key={technician.id} value={technician.id}>
-                  {technician.employeeCode}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {technicians.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              No active technicians available.
-            </p>
-          ) : null}
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="job-assign-technician">Technician</Label>
+            <Select
+              value={value}
+              onValueChange={(next) => onValueChange(next)}
+              disabled={pending}
+            >
+              <SelectTrigger id="job-assign-technician" className="w-full">
+                <SelectValue placeholder="Select a technician" />
+              </SelectTrigger>
+              <SelectContent>
+                {technicians.map((technician) => (
+                  <SelectItem key={technician.id} value={technician.id}>
+                    {technician.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {technicians.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No active technicians available.
+              </p>
+            ) : null}
+          </div>
+          <Label className="flex cursor-pointer items-center gap-2 font-normal">
+            <Checkbox
+              checked={allowOverlap}
+              onCheckedChange={(checked) =>
+                onAllowOverlapChange(checked === true)
+              }
+              disabled={pending}
+            />
+            Allow schedule overlap
+          </Label>
         </div>
         <DialogFooter>
           <Button
@@ -978,11 +1111,7 @@ function AssignDialog({
             Cancel
           </Button>
           <Button type="button" onClick={onSubmit} disabled={pending}>
-            {pending
-              ? "Saving…"
-              : isReassign
-                ? "Reassign"
-                : "Assign"}
+            Review
           </Button>
         </DialogFooter>
       </DialogContent>
