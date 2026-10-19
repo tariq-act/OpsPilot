@@ -484,19 +484,127 @@ export interface UpdateTechnicianInput {
 }
 
 export type InvoiceStatus =
-  "DRAFT" | "SENT" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "VOID";
+  | "DRAFT"
+  | "SENT"
+  | "PARTIALLY_PAID"
+  | "PAID"
+  | "OVERDUE"
+  | "VOID";
+
+export type InvoiceItemType = "LABOR" | "PARTS" | "OTHER" | "FEE";
+
+export interface InvoiceItem {
+  id: string;
+  invoiceId: string;
+  type: InvoiceItemType;
+  description: string;
+  quantity: string;
+  unitPrice: string;
+  amount: string;
+}
 
 export interface Invoice {
   id: string;
   organizationId: string;
+  customerId: string;
+  jobId: string;
   invoiceNumber: string;
   status: InvoiceStatus;
+  subtotal: string;
+  discount: string;
+  tax: string;
+  total: string;
+  amountPaid: string;
+  amountDue: string;
+  currency: string;
+  issuedAt: string | null;
+  dueAt: string | null;
+  paidAt: string | null;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
+  items: InvoiceItem[];
 }
 
 export interface InvoiceListResponse {
   invoices: Invoice[];
+}
+
+export interface InvoiceResponse {
+  invoice: Invoice;
+}
+
+export interface ListInvoicesQuery {
+  status?: InvoiceStatus;
+  customerId?: string;
+  jobId?: string;
+}
+
+export interface CreateInvoiceItemInput {
+  type: InvoiceItemType;
+  description: string;
+  quantity: string;
+  unitPrice: string;
+}
+
+export interface CreateInvoiceInput {
+  customerId: string;
+  jobId: string;
+  items: CreateInvoiceItemInput[];
+  discount?: string;
+  tax?: string;
+  dueAt?: string;
+}
+
+export interface UpdateInvoiceInput {
+  items?: CreateInvoiceItemInput[];
+  discount?: string;
+  tax?: string;
+  dueAt?: string | null;
+}
+
+export type PaymentMethod =
+  | "CASH"
+  | "CARD"
+  | "BANK_TRANSFER"
+  | "UPI"
+  | "ONLINE"
+  | "OTHER";
+
+export type PaymentStatus =
+  | "PENDING"
+  | "SUCCEEDED"
+  | "FAILED"
+  | "REFUNDED";
+
+export interface Payment {
+  id: string;
+  organizationId: string;
+  customerId: string;
+  invoiceId: string;
+  amount: string;
+  currency: string;
+  method: PaymentMethod;
+  status: PaymentStatus;
+  transactionId: string | null;
+  paidAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaymentListResponse {
+  payments: Payment[];
+}
+
+export interface PaymentResponse {
+  payment: Payment;
+}
+
+export interface CreatePaymentInput {
+  amount: string;
+  method: PaymentMethod;
+  transactionId?: string;
+  customerId?: string;
 }
 
 export interface AuditLog {
