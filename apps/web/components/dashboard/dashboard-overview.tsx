@@ -10,8 +10,10 @@ import {
   LuWrench,
 } from "react-icons/lu";
 
+import { InvoiceStatusBadge } from "@/components/invoices/invoice-badges";
 import { useOrg } from "@/components/providers/org-provider";
 import { buttonVariants } from "@/components/ui/button";
+import { formatDateTime, formatMoney, sumMoneyStrings } from "@/lib/format";
 import { useAuditLogsQuery } from "@/lib/query/audit-logs";
 import { useInvoicesQuery } from "@/lib/query/invoices";
 import { useJobsQuery } from "@/lib/query/jobs";
@@ -21,6 +23,7 @@ import { useTechniciansQuery } from "@/lib/query/technicians";
 import { cn } from "@/lib/utils";
 import type {
   AuditLog,
+  Invoice,
   InvoiceStatus,
   Job,
   JobStatus,
@@ -296,6 +299,30 @@ function DashboardData({
         : "No pending invoices"
       : null;
 
+  const activeInvoices = invoicesQuery.invoices.filter(
+    (invoice) => invoice.status !== "VOID",
+  );
+  const outstandingAmount = sumMoneyStrings(
+    activeInvoices.map((invoice) => invoice.amountDue),
+  );
+  const paidAmount = sumMoneyStrings(
+    activeInvoices.map((invoice) => invoice.amountPaid),
+  );
+  const billingCurrency =
+    invoicesQuery.invoices[0]?.currency ?? "USD";
+  const recentPaidInvoices = [...invoicesQuery.invoices]
+    .filter(
+      (invoice) =>
+        invoice.status !== "VOID" &&
+        Number(invoice.amountPaid) > 0,
+    )
+    .sort((a, b) => {
+      const aTime = Date.parse(a.paidAt ?? a.updatedAt);
+      const bTime = Date.parse(b.paidAt ?? b.updatedAt);
+      return bTime - aTime;
+    })
+    .slice(0, RECENT_LIMIT);
+
   const syncing =
     jobsQuery.server.isFetching ||
     requestsQuery.server.isFetching ||
@@ -384,6 +411,23 @@ function DashboardData({
           onRetry={() => void invoicesQuery.refetch()}
         />
       </KpiGrid>
+
+      <BillingSection
+        isLoading={invoicesQuery.server.isLoading}
+        isError={invoicesQuery.server.isError}
+        isFetching={
+          invoicesQuery.server.isFetching && !invoicesQuery.server.isLoading
+        }
+        errorMessage={invoicesQuery.server.error?.message ?? null}
+        unauthorized={invoicesQuery.server.error?.unauthorized ?? false}
+        onRetry={() => void invoicesQuery.refetch()}
+        outstandingAmount={outstandingAmount}
+        paidAmount={paidAmount}
+        currency={billingCurrency}
+        recentPaidInvoices={recentPaidInvoices}
+        timeZone={timeZone}
+        hasInvoices={invoicesQuery.invoices.length > 0}
+      />
 
       <section className="rounded-2xl border border-border bg-card p-6">
         <h2 className="text-sm font-semibold text-foreground">Quick actions</h2>
@@ -561,6 +605,151 @@ function KpiCard({
     >
       {content}
     </Link>
+  );
+}
+
+function BillingSection({
+  isLoading,
+  isError,
+  isFetching,
+  errorMessage,
+  unauthorized,
+  onRetry,
+  outstandingAmount,
+  paidAmount,
+  currency,
+  recentPaidInvoices,
+  timeZone,
+  hasInvoices,
+}: {
+  isLoading: boolean;
+  isError: boolean;
+  isFetching: boolean;
+  errorMessage: string | null;
+  unauthorized: boolean;
+  onRetry: () => void;
+  outstandingAmount: string;
+  paidAmount: string;
+  currency: string;
+  recentPaidInvoices: Invoice[];
+  timeZone: string;
+  hasInvoices: boolean;
+}) {
+  return (
+    <section className="rounded-2xl border border-border bg-card p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold text-foreground">Billing</h2>
+        <div className="flex items-center gap-3">
+          {isFetching ? (
+            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Syncing
+            </span>
+          ) : null}
+          <Link
+            href={INVOICES_HREF}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            View invoices
+          </Link>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="h-20 animate-pulse rounded-xl bg-muted" />
+          <div className="h-20 animate-pulse rounded-xl bg-muted" />
+        </div>
+      ) : null}
+
+      {isError ? (
+        <div className="mt-4">
+          <p role="alert" className="text-sm text-destructive">
+            {errorMessage ?? "Unable to load billing summary."}
+          </p>
+          {unauthorized ? (
+            <Link
+              href="/login"
+              className="mt-3 inline-block text-sm font-medium text-primary hover:text-primary/80"
+            >
+              Sign in
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-3 text-sm font-medium text-primary hover:text-primary/80"
+            >
+              Retry
+            </button>
+          )}
+        </div>
+      ) : null}
+
+      {!isLoading && !isError ? (
+        <>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-border bg-background p-4">
+              <p className="text-xs font-medium text-muted-foreground">
+                Outstanding
+              </p>
+              <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">
+                {formatMoney(outstandingAmount, currency)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-background p-4">
+              <p className="text-xs font-medium text-muted-foreground">
+                Paid
+              </p>
+              <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">
+                {formatMoney(paidAmount, currency)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Recent payments
+            </h3>
+            {!hasInvoices ? (
+              <p className="mt-3 text-sm text-muted-foreground">
+                No invoices yet.
+              </p>
+            ) : recentPaidInvoices.length === 0 ? (
+              <p className="mt-3 text-sm text-muted-foreground">
+                No recorded payments yet.
+              </p>
+            ) : (
+              <ul className="mt-3 divide-y divide-border">
+                {recentPaidInvoices.map((invoice) => (
+                  <li
+                    key={invoice.id}
+                    className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                  >
+                    <div>
+                      <Link
+                        href={`/dashboard/invoices/${invoice.id}`}
+                        className="text-sm font-medium text-foreground hover:text-primary"
+                      >
+                        {invoice.invoiceNumber}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">
+                        {formatMoney(invoice.amountPaid, invoice.currency)} paid
+                        ·{" "}
+                        {formatDateTime(
+                          invoice.paidAt ?? invoice.updatedAt,
+                          timeZone,
+                        )}
+                      </p>
+                    </div>
+                    <InvoiceStatusBadge status={invoice.status} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>
+      ) : null}
+    </section>
   );
 }
 

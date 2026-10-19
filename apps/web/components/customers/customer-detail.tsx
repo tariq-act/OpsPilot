@@ -7,6 +7,7 @@ import { LuArrowLeft } from "react-icons/lu";
 import { CustomerStatusBadge } from "@/components/customers/customer-badges";
 import { CustomerEditDialog } from "@/components/customers/customer-form";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { InvoiceStatusBadge } from "@/components/invoices/invoice-badges";
 import { JobStatusBadge } from "@/components/jobs/job-badges";
 import { useOrg } from "@/components/providers/org-provider";
 import { ServiceRequestStatusBadge } from "@/components/service-requests/request-badges";
@@ -22,7 +23,9 @@ import {
 import {
   formatCustomerAddress,
   formatDateTime,
+  formatMoney,
   shortId,
+  sumMoneyStrings,
 } from "@/lib/format";
 import { useAuditLogsQuery } from "@/lib/query/audit-logs";
 import {
@@ -30,6 +33,7 @@ import {
   useDeactivateCustomerMutation,
 } from "@/lib/query/customers";
 import { toUserErrorMessage } from "@/lib/query/errors";
+import { useInvoicesQuery } from "@/lib/query/invoices";
 import { useJobsQuery } from "@/lib/query/jobs";
 import { useServiceRequestsQuery } from "@/lib/query/service-requests";
 import { cn } from "@/lib/utils";
@@ -55,6 +59,7 @@ export function CustomerDetail({ id }: { id: string }) {
     customerId: id,
   });
   const jobsQuery = useJobsQuery(organizationId, { customerId: id });
+  const invoicesQuery = useInvoicesQuery(organizationId, { customerId: id });
   const auditQuery = useAuditLogsQuery(organizationId, 20, canViewAudit, {
     entityType: "CUSTOMER",
     entityId: id,
@@ -130,6 +135,13 @@ export function CustomerDetail({ id }: { id: string }) {
 
   const address = formatCustomerAddress(customer);
   const canDeactivate = customer.status === "ACTIVE";
+  const outstandingAmount = sumMoneyStrings(
+    invoicesQuery.invoices
+      .filter((invoice) => invoice.status !== "VOID")
+      .map((invoice) => invoice.amountDue),
+  );
+  const invoiceCurrency =
+    invoicesQuery.invoices[0]?.currency ?? current.currency ?? "USD";
 
   return (
     <div className="flex flex-col gap-6">
@@ -347,6 +359,72 @@ export function CustomerDetail({ id }: { id: string }) {
                   </p>
                 </div>
                 <JobStatusBadge status={job.status} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Invoices</h2>
+            {!invoicesQuery.server.isLoading &&
+            invoicesQuery.invoices.length > 0 ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Outstanding{" "}
+                {formatMoney(outstandingAmount, invoiceCurrency)}
+              </p>
+            ) : null}
+          </div>
+          <Link
+            href={`/dashboard/invoices?customerId=${encodeURIComponent(id)}`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            View invoices
+          </Link>
+        </div>
+        {invoicesQuery.server.isLoading ? (
+          <div className="mt-4 h-16 animate-pulse rounded-md bg-muted" />
+        ) : invoicesQuery.server.isError ? (
+          <div className="mt-4">
+            <p role="alert" className="text-sm text-destructive">
+              {invoicesQuery.server.error?.message ??
+                "Unable to load invoices."}
+            </p>
+            <button
+              type="button"
+              className="mt-2 text-sm font-medium text-primary hover:text-primary/80"
+              onClick={() => void invoicesQuery.refetch()}
+            >
+              Retry
+            </button>
+          </div>
+        ) : invoicesQuery.invoices.length === 0 ? (
+          <p className="mt-4 text-sm text-muted-foreground">
+            No invoices for this customer yet.
+          </p>
+        ) : (
+          <ul className="mt-4 divide-y divide-border">
+            {invoicesQuery.invoices.map((invoice) => (
+              <li
+                key={invoice.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+              >
+                <div>
+                  <Link
+                    href={`/dashboard/invoices/${invoice.id}`}
+                    className="text-sm font-medium text-foreground hover:text-primary"
+                  >
+                    {invoice.invoiceNumber}
+                  </Link>
+                  <p className="text-xs text-muted-foreground">
+                    {formatMoney(invoice.total, invoice.currency)} · due{" "}
+                    {formatMoney(invoice.amountDue, invoice.currency)} ·{" "}
+                    {formatDateTime(invoice.createdAt, timeZone)}
+                  </p>
+                </div>
+                <InvoiceStatusBadge status={invoice.status} />
               </li>
             ))}
           </ul>

@@ -5,6 +5,7 @@
  */
 
 import { api } from "@/lib/api";
+import { listInvoices as listInvoicesResource } from "@/lib/api/invoices";
 import { listJobs as listJobsResource } from "@/lib/api/jobs";
 import { organizationHeaders } from "@/lib/api/org-headers";
 import { listServiceRequests as listServiceRequestsResource } from "@/lib/api/service-requests";
@@ -36,9 +37,7 @@ export function listTechnicians(
 export function listInvoices(
   organizationId: string,
 ): Promise<InvoiceListResponse> {
-  return api.get<InvoiceListResponse>("/invoices", {
-    headers: organizationHeaders(organizationId),
-  });
+  return listInvoicesResource(organizationId);
 }
 
 export function listAuditLogs(

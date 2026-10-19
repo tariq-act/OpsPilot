@@ -5,6 +5,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { LuArrowLeft } from "react-icons/lu";
 
 import { PageHeader } from "@/components/dashboard/page-header";
+import { InvoiceStatusBadge } from "@/components/invoices/invoice-badges";
 import { JobPriorityBadge, JobStatusBadge } from "@/components/jobs/job-badges";
 import { useOrg } from "@/components/providers/org-provider";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -35,6 +36,7 @@ import {
 import {
   formatCustomerAddress,
   formatDateTime,
+  formatMoney,
   shortId,
 } from "@/lib/format";
 import {
@@ -42,9 +44,14 @@ import {
   getPrimaryJobActionLabel,
   JOB_STATUS_LABEL,
 } from "@/lib/job-status";
-import { isJobManagerRole, isTechnicianRole } from "@/lib/member-roles";
+import {
+  isInvoiceManagerRole,
+  isJobManagerRole,
+  isTechnicianRole,
+} from "@/lib/member-roles";
 import { useCustomerQuery } from "@/lib/query/customers";
 import { toUserErrorMessage } from "@/lib/query/errors";
+import { useInvoicesQuery } from "@/lib/query/invoices";
 import {
   useAssignTechniciansMutation,
   useCancelJobMutation,
@@ -77,6 +84,7 @@ export function JobDetail({ id }: { id: string }) {
   const timeZone = current?.timezone ?? "UTC";
   const isManager = isJobManagerRole(current?.role);
   const isTechnician = isTechnicianRole(current?.role);
+  const canManageInvoices = isInvoiceManagerRole(current?.role);
 
   const detailQuery = useJobQuery(organizationId, id);
   const job = detailQuery.job;
@@ -93,6 +101,9 @@ export function JobDetail({ id }: { id: string }) {
   const activitiesQuery = useJobActivitiesQuery(organizationId, id);
   const techniciansQuery = useTechniciansQuery(organizationId);
   const membersQuery = useOrganizationMembersQuery(organizationId);
+  const jobInvoicesQuery = useInvoicesQuery(organizationId, {
+    jobId: id,
+  });
 
   const scheduleMutation = useScheduleJobMutation(organizationId);
   const progressMutation = useUpdateJobProgressMutation(organizationId);
@@ -740,6 +751,56 @@ export function JobDetail({ id }: { id: string }) {
             ) : (
               <p className="mt-4 text-sm text-muted-foreground">
                 Request {shortId(job.requestId)}
+              </p>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-border bg-card p-5">
+            <h2 className="text-sm font-semibold text-foreground">Billing</h2>
+            {job.status !== "COMPLETED" ? (
+              <p className="mt-4 text-sm text-muted-foreground">
+                Invoices can be created after this job is completed.
+              </p>
+            ) : jobInvoicesQuery.server.isLoading ? (
+              <div className="mt-4 h-12 animate-pulse rounded-md bg-muted" />
+            ) : jobInvoicesQuery.invoices.length > 0 ? (
+              <ul className="mt-4 divide-y divide-border">
+                {jobInvoicesQuery.invoices.map((invoice) => (
+                  <li
+                    key={invoice.id}
+                    className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                  >
+                    <div>
+                      <Link
+                        href={`/dashboard/invoices/${invoice.id}`}
+                        className="text-sm font-medium text-foreground hover:text-primary"
+                      >
+                        {invoice.invoiceNumber}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">
+                        {formatMoney(invoice.total, invoice.currency)} due{" "}
+                        {formatMoney(invoice.amountDue, invoice.currency)}
+                      </p>
+                    </div>
+                    <InvoiceStatusBadge status={invoice.status} />
+                  </li>
+                ))}
+              </ul>
+            ) : canManageInvoices ? (
+              <div className="mt-4 flex flex-col gap-3">
+                <p className="text-sm text-muted-foreground">
+                  No invoice for this completed job yet.
+                </p>
+                <Link
+                  href={`/dashboard/invoices/new?jobId=${encodeURIComponent(job.id)}&customerId=${encodeURIComponent(job.customerId)}`}
+                  className={buttonVariants({ size: "sm" })}
+                >
+                  Create invoice
+                </Link>
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-muted-foreground">
+                No invoice linked to this job.
               </p>
             )}
           </section>

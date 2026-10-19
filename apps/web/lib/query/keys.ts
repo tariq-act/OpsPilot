@@ -85,8 +85,17 @@ export const queryKeys = {
     all: (organizationId: string) => ["invoices", organizationId] as const,
     lists: (organizationId: string) =>
       [...queryKeys.invoices.all(organizationId), "list"] as const,
-    list: (organizationId: string) =>
-      [...queryKeys.invoices.lists(organizationId)] as const,
+    list: (
+      organizationId: string,
+      filters: Record<string, string | undefined> = {},
+    ) => [...queryKeys.invoices.lists(organizationId), filters] as const,
+    detail: (organizationId: string, id: string) =>
+      [...queryKeys.invoices.all(organizationId), "detail", id] as const,
+    payments: (organizationId: string, invoiceId: string) =>
+      [
+        ...queryKeys.invoices.detail(organizationId, invoiceId),
+        "payments",
+      ] as const,
   },
 
   auditLogs: {

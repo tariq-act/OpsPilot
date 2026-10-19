@@ -75,8 +75,15 @@ export {
 
 export {
   invoiceQueries,
+  useCreateInvoiceMutation,
+  useCreateInvoicePaymentMutation,
   useInvalidateInvoices,
+  useInvoicePaymentsQuery,
+  useInvoiceQuery,
   useInvoicesQuery,
+  useSendInvoiceMutation,
+  useUpdateInvoiceMutation,
+  useVoidInvoiceMutation,
 } from "@/lib/query/invoices";
 
 export {

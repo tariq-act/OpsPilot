@@ -14,3 +14,10 @@ export function isJobManagerRole(role: MemberRole | null | undefined): boolean {
 export function isTechnicianRole(role: MemberRole | null | undefined): boolean {
   return role === "TECHNICIAN";
 }
+
+/** Mirrors invoice/payment manager roles on the API. */
+export function isInvoiceManagerRole(
+  role: MemberRole | null | undefined,
+): boolean {
+  return isJobManagerRole(role);
+}

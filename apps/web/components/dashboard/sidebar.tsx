@@ -73,7 +73,7 @@ const navItems: NavItem[] = [
     label: "Invoices",
     href: "/dashboard/invoices",
     icon: LuFileText,
-    roles: ["OWNER", "ADMIN"],
+    roles: ["OWNER", "ADMIN", "DISPATCHER"],
   },
   {
     label: "Analytics",
