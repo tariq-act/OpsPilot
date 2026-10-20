@@ -91,3 +91,20 @@ export {
   useAuditLogsQuery,
   useInvalidateAuditLogs,
 } from "@/lib/query/audit-logs";
+
+export {
+  notificationQueries,
+  useInvalidateNotifications,
+  useNotificationQuery,
+  useNotificationsQuery,
+  useRetryNotificationMutation,
+} from "@/lib/query/notifications";
+
+export {
+  followUpQueries,
+  useCreateFollowUpMutation,
+  useFollowUpQuery,
+  useFollowUpsQuery,
+  useInvalidateFollowUps,
+  useUpdateFollowUpMutation,
+} from "@/lib/query/follow-ups";

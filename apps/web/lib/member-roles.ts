@@ -21,3 +21,16 @@ export function isInvoiceManagerRole(
 ): boolean {
   return isJobManagerRole(role);
 }
+
+/** Mirrors notification viewer / follow-up manager roles on the API. */
+export function isNotificationManagerRole(
+  role: MemberRole | null | undefined,
+): boolean {
+  return isJobManagerRole(role);
+}
+
+export function isFollowUpManagerRole(
+  role: MemberRole | null | undefined,
+): boolean {
+  return isJobManagerRole(role);
+}
