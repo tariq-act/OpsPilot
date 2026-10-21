@@ -1,4 +1,4 @@
-
+```yaml
 name: Sync Project When PR Is Merged
 
 on:
@@ -20,7 +20,10 @@ permissions:
 
 jobs:
   sync-project:
-    if: github.event.pull_request.merged == true
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.merged == true)
     runs-on: ubuntu-latest
 
     steps:
@@ -33,10 +36,31 @@ jobs:
         with:
           github-token: ${{ secrets.PROJECT_SYNC_TOKEN }}
           script: |
-            const pr = context.payload.pull_request;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const projectId = process.env.PROJECT_ID;
+
+            // Identify the PR for automatic or manual runs.
+            const prNumber =
+              context.eventName === "workflow_dispatch"
+                ? Number(context.payload.inputs.pr_number)
+                : context.payload.pull_request.number;
+
+            if (!Number.isInteger(prNumber) || prNumber < 1) {
+              throw new Error("A valid PR number is required.");
+            }
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: prNumber
+            });
+
+            if (!pr.merged) {
+              throw new Error(`PR #${prNumber} has not been merged.`);
+            }
+
+            core.info(`Processing merged PR #${prNumber}: ${pr.html_url}`);
 
             // Find issues linked through GitHub closing keywords.
             const linkedIssuesQuery = `
@@ -45,7 +69,6 @@ jobs:
                   pullRequest(number: $number) {
                     closingIssuesReferences(first: 100) {
                       nodes {
-                        id
                         number
                         title
                         repository {
@@ -74,7 +97,7 @@ jobs:
               {
                 owner,
                 repo,
-                number: pr.number
+                number: prNumber
               }
             );
 
@@ -100,13 +123,11 @@ jobs:
               );
             }
 
-            // Stop project syncing if the project ID is not configured.
             if (!projectId) {
-              core.warning(
-                "PROJECT_ID is not configured. Linked issues were processed, " +
-                "but project items were not updated."
+              throw new Error(
+                "PROJECT_ID is not configured. Set it as a repository " +
+                "Actions variable to the internal Project V2 ID (PVT_...)."
               );
-              return;
             }
 
             const statusFieldName =
@@ -114,7 +135,7 @@ jobs:
             const doneName =
               process.env.PROJECT_DONE_OPTION || "Done";
 
-            // Retrieve the project and its fields.
+            // Retrieve the target project and its fields.
             const projectQuery = `
               query($id: ID!) {
                 node(id: $id) {
@@ -151,7 +172,7 @@ jobs:
             if (!project) {
               throw new Error(
                 `Could not find Project V2 with ID "${projectId}". ` +
-                "Check the PROJECT_ID repository variable."
+                "Check the PROJECT_ID repository variable and token access."
               );
             }
 
@@ -173,7 +194,7 @@ jobs:
               );
             }
 
-            // Collect the linked issue items belonging to the target project.
+            // Collect linked issue items already in the target project.
             const itemsToSync = new Map();
 
             for (const issue of issues) {
@@ -184,7 +205,7 @@ jobs:
               }
             }
 
-            // Also include the merged PR itself if it is in the project.
+            // Also include the merged PR if it is already in the project.
             const prItemsQuery = `
               query($owner: String!, $repo: String!, $number: Int!) {
                 repository(owner: $owner, name: $repo) {
@@ -205,7 +226,7 @@ jobs:
             const prItemsData = await github.graphql(prItemsQuery, {
               owner,
               repo,
-              number: pr.number
+              number: prNumber
             });
 
             for (const item of
@@ -217,7 +238,7 @@ jobs:
 
             if (itemsToSync.size === 0) {
               core.warning(
-                `No linked issues or PR items were found in ` +
+                `No linked issue or PR items were found in ` +
                 `"${project.title}". No project statuses were changed.`
               );
             }
@@ -264,3 +285,4 @@ jobs:
             core.info(
               `Finished. Updated ${itemsToSync.size} project item(s).`
             );
+```
