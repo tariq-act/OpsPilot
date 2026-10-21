@@ -1,0 +1,265 @@
+
+name: Sync Project When PR Is Merged
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+  repository-projects: write
+
+jobs:
+  sync-project:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Update linked issues and project
+        uses: actions/github-script@v7
+        env:
+          PROJECT_ID: ${{ vars.PROJECT_ID }}
+          PROJECT_STATUS_FIELD: Status
+          PROJECT_DONE_OPTION: Done
+          LINKED_PR_FIELD: Linked PR
+        with:
+          github-token: ${{ secrets.PROJECT_SYNC_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Find issues linked using GitHub closing keywords.
+            const query = `
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    closingIssuesReferences(first: 100) {
+                      nodes {
+                        id
+                        number
+                        title
+                        url
+                        repository {
+                          name
+                          owner { login }
+                        }
+                        projectItems(first: 50) {
+                          nodes {
+                            id
+                            project {
+                              id
+                              title
+                              fields(first: 50) {
+                                nodes {
+                                  ... on ProjectV2Field {
+                                    id
+                                    name
+                                  }
+                                  ... on ProjectV2SingleSelectField {
+                                    id
+                                    name
+                                    options {
+                                      id
+                                      name
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+
+            const result = await github.graphql(query, {
+              owner,
+              repo,
+              number: pr.number
+            });
+
+            const issues =
+              result.repository.pullRequest.closingIssuesReferences.nodes;
+
+            // Close linked issues, including issues in other repositories.
+            for (const issue of issues) {
+              const issueOwner = issue.repository.owner.login;
+              const issueRepo = issue.repository.name;
+
+              await github.rest.issues.update({
+                owner: issueOwner,
+                repo: issueRepo,
+                issue_number: issue.number,
+                state: "closed"
+              });
+
+              core.info(`Closed issue #${issue.number}: ${issue.title}`);
+            }
+
+            // Optionally sync items in one specified GitHub Project.
+            const projectId = process.env.PROJECT_ID;
+            if (!projectId) {
+              core.warning(
+                "PROJECT_ID is not configured. Issues were processed, " +
+                "but project fields were not updated."
+              );
+              return;
+            }
+
+            const statusFieldName =
+              process.env.PROJECT_STATUS_FIELD || "Status";
+            const doneName =
+              process.env.PROJECT_DONE_OPTION || "Done";
+            const linkedPrFieldName =
+              process.env.LINKED_PR_FIELD || "Linked PR";
+
+            // Find the target project and its fields.
+            const projectQuery = `
+              query($id: ID!) {
+                node(id: $id) {
+                  ... on ProjectV2 {
+                    id
+                    title
+                    fields(first: 100) {
+                      nodes {
+                        ... on ProjectV2FieldCommon {
+                          id
+                          name
+                        }
+                        ... on ProjectV2SingleSelectField {
+                          id
+                          name
+                          options { id name }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+
+            const projectData = await github.graphql(projectQuery, {
+              id: projectId
+            });
+
+            const project = projectData.node;
+            if (!project) {
+              throw new Error("Could not find the configured GitHub Project.");
+            }
+
+            const statusField = project.fields.nodes.find(
+              f => f.name === statusFieldName && f.options
+            );
+            const doneOption = statusField?.options.find(
+              o => o.name.toLowerCase() === doneName.toLowerCase()
+            );
+            const linkedPrField = project.fields.nodes.find(
+              f => f.name === linkedPrFieldName
+            );
+
+            if (!statusField || !doneOption) {
+              throw new Error(
+                `Could not find status field "${statusFieldName}" ` +
+                `or option "${doneName}" in project "${project.title}".`
+              );
+            }
+
+            // Include the merged PR itself and all linked issue items.
+            const itemsToSync = new Map();
+
+            for (const issue of issues) {
+              for (const item of issue.projectItems.nodes) {
+                if (item.project.id === projectId) {
+                  itemsToSync.set(item.id, item);
+                }
+              }
+            }
+
+            // Look up the PR's own project item in the target project.
+            const prQuery = `
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    projectItems(first: 100) {
+                      nodes {
+                        id
+                        project { id }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+
+            const prData = await github.graphql(prQuery, {
+              owner,
+              repo,
+              number: pr.number
+            });
+
+            for (const item of
+              prData.repository.pullRequest.projectItems.nodes) {
+              if (item.project.id === projectId) {
+                itemsToSync.set(item.id, item);
+              }
+            }
+
+            for (const item of itemsToSync.values()) {
+              await github.graphql(`
+                mutation($project: ID!, $item: ID!,
+                         $field: ID!, $option: String!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: $project
+                    itemId: $item
+                    fieldId: $field
+                    value: { singleSelectOptionId: $option }
+                  }) {
+                    projectV2Item { id }
+                  }
+                }
+              `, {
+                project: projectId,
+                item: item.id,
+                field: statusField.id,
+                option: doneOption.id
+              });
+
+              // Linked PR is a text field containing the merged PR URL.
+              if (linkedPrField) {
+                await github.graphql(`
+                  mutation($project: ID!, $item: ID!,
+                           $field: ID!, $value: String!) {
+                    updateProjectV2ItemFieldValue(input: {
+                      projectId: $project
+                      itemId: $item
+                      fieldId: $field
+                      value: { text: $value }
+                    }) {
+                      projectV2Item { id }
+                    }
+                  }
+                `, {
+                  project: projectId,
+                  item: item.id,
+                  field: linkedPrField.id,
+                  value: pr.html_url
+                });
+              }
+
+              core.info(`Updated project item ${item.id}`);
+            }
+
+            if (!linkedPrField) {
+              core.warning(
+                `Project field "${linkedPrFieldName}" was not found. ` +
+                "Status updates completed, but the PR URL was not stored."
+              );
+            }
+
+            core.info(`Merged PR: ${pr.html_url}`);
