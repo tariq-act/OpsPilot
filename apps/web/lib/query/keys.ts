@@ -107,4 +107,29 @@ export const queryKeys = {
       filters: Record<string, string | number | undefined>,
     ) => [...queryKeys.auditLogs.lists(organizationId), filters] as const,
   },
+
+  notifications: {
+    all: (organizationId: string) =>
+      ["notifications", organizationId] as const,
+    lists: (organizationId: string) =>
+      [...queryKeys.notifications.all(organizationId), "list"] as const,
+    list: (
+      organizationId: string,
+      filters: Record<string, string | undefined> = {},
+    ) => [...queryKeys.notifications.lists(organizationId), filters] as const,
+    detail: (organizationId: string, id: string) =>
+      [...queryKeys.notifications.all(organizationId), "detail", id] as const,
+  },
+
+  followUps: {
+    all: (organizationId: string) => ["follow-ups", organizationId] as const,
+    lists: (organizationId: string) =>
+      [...queryKeys.followUps.all(organizationId), "list"] as const,
+    list: (
+      organizationId: string,
+      filters: Record<string, string | undefined> = {},
+    ) => [...queryKeys.followUps.lists(organizationId), filters] as const,
+    detail: (organizationId: string, id: string) =>
+      [...queryKeys.followUps.all(organizationId), "detail", id] as const,
+  },
 } as const;

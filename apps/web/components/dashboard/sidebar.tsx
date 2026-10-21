@@ -12,6 +12,8 @@ import {
   LuCompass,
   LuFileText,
   LuLogOut,
+  LuCalendarCheck,
+  LuMessageSquare,
   LuSettings,
   LuUsers,
   LuWrench,
@@ -73,6 +75,18 @@ const navItems: NavItem[] = [
     label: "Invoices",
     href: "/dashboard/invoices",
     icon: LuFileText,
+    roles: ["OWNER", "ADMIN", "DISPATCHER"],
+  },
+  {
+    label: "Notifications",
+    href: "/dashboard/notifications",
+    icon: LuMessageSquare,
+    roles: ["OWNER", "ADMIN", "DISPATCHER"],
+  },
+  {
+    label: "Follow-ups",
+    href: "/dashboard/follow-ups",
+    icon: LuCalendarCheck,
     roles: ["OWNER", "ADMIN", "DISPATCHER"],
   },
   {

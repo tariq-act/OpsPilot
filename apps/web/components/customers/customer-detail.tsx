@@ -7,6 +7,7 @@ import { LuArrowLeft } from "react-icons/lu";
 import { CustomerStatusBadge } from "@/components/customers/customer-badges";
 import { CustomerEditDialog } from "@/components/customers/customer-form";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { RelatedFollowUps } from "@/components/follow-ups/related-follow-ups";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-badges";
 import { JobStatusBadge } from "@/components/jobs/job-badges";
 import { useOrg } from "@/components/providers/org-provider";
@@ -430,6 +431,13 @@ export function CustomerDetail({ id }: { id: string }) {
           </ul>
         )}
       </section>
+
+      <RelatedFollowUps
+        organizationId={organizationId}
+        role={current.role}
+        timeZone={timeZone}
+        customerId={id}
+      />
 
       <section className="rounded-2xl border border-border bg-card p-5">
         <h2 className="text-sm font-semibold text-foreground">Activity</h2>

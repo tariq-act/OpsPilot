@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { LuArrowLeft } from "react-icons/lu";
 
 import { PageHeader } from "@/components/dashboard/page-header";
+import { RelatedFollowUps } from "@/components/follow-ups/related-follow-ups";
 import {
   InvoiceStatusBadge,
   PaymentStatusBadge,
@@ -407,6 +408,15 @@ export function InvoiceDetail({ id }: { id: string }) {
           </ul>
         )}
       </section>
+
+      <RelatedFollowUps
+        organizationId={organizationId}
+        role={current.role}
+        timeZone={timeZone}
+        customerId={invoice.customerId}
+        title="Customer follow-ups"
+        createHref={`/dashboard/follow-ups?create=1&customerId=${encodeURIComponent(invoice.customerId)}&jobId=${encodeURIComponent(invoice.jobId)}`}
+      />
 
       <RecordPaymentDialog
         open={paymentOpen}

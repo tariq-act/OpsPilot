@@ -5,6 +5,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { LuArrowLeft } from "react-icons/lu";
 
 import { PageHeader } from "@/components/dashboard/page-header";
+import { RelatedFollowUps } from "@/components/follow-ups/related-follow-ups";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-badges";
 import { JobPriorityBadge, JobStatusBadge } from "@/components/jobs/job-badges";
 import { useOrg } from "@/components/providers/org-provider";
@@ -806,6 +807,14 @@ export function JobDetail({ id }: { id: string }) {
           </section>
         </div>
       </div>
+
+      <RelatedFollowUps
+        organizationId={organizationId}
+        role={current.role}
+        timeZone={timeZone}
+        customerId={job.customerId}
+        jobId={job.id}
+      />
 
       <section className="rounded-2xl border border-border bg-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">

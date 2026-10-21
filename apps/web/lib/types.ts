@@ -619,3 +619,112 @@ export interface AuditLog {
 export interface AuditLogListResponse {
   auditLogs: AuditLog[];
 }
+
+// ---------------------------------------------------------------------------
+// Customer notifications (outbound delivery history)
+// ---------------------------------------------------------------------------
+
+export type NotificationEventType =
+  | "JOB_SCHEDULED"
+  | "JOB_RESCHEDULED"
+  | "TECHNICIAN_ASSIGNED"
+  | "JOB_COMPLETED"
+  | "INVOICE_SENT"
+  | "PAYMENT_CONFIRMED"
+  | "PAYMENT_REMINDER"
+  | "FOLLOW_UP_DUE";
+
+export type NotificationChannel = "EMAIL" | "SMS" | "WHATSAPP";
+
+export type NotificationStatus =
+  | "PENDING"
+  | "PROCESSING"
+  | "SENT"
+  | "FAILED";
+
+export interface CustomerNotification {
+  id: string;
+  organizationId: string;
+  customerId: string;
+  eventType: NotificationEventType;
+  channel: NotificationChannel;
+  status: NotificationStatus;
+  recipient: string;
+  payload: Record<string, unknown>;
+  idempotencyKey: string;
+  attemptCount: number;
+  lastError: string | null;
+  sentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationListResponse {
+  notifications: CustomerNotification[];
+}
+
+export interface NotificationResponse {
+  notification: CustomerNotification;
+}
+
+export interface ListNotificationsQuery {
+  status?: NotificationStatus;
+  eventType?: NotificationEventType;
+  channel?: NotificationChannel;
+  customerId?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Follow-ups
+// ---------------------------------------------------------------------------
+
+export type FollowUpType = "FEEDBACK" | "MAINTENANCE_REMINDER";
+
+export type FollowUpStatus =
+  | "PENDING"
+  | "SCHEDULED"
+  | "COMPLETED"
+  | "CANCELLED";
+
+export interface FollowUp {
+  id: string;
+  organizationId: string;
+  customerId: string;
+  jobId: string | null;
+  type: FollowUpType;
+  status: FollowUpStatus;
+  dueAt: string;
+  notes: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FollowUpListResponse {
+  followUps: FollowUp[];
+}
+
+export interface FollowUpResponse {
+  followUp: FollowUp;
+}
+
+export interface ListFollowUpsQuery {
+  status?: FollowUpStatus;
+  type?: FollowUpType;
+  customerId?: string;
+  jobId?: string;
+}
+
+export interface CreateFollowUpInput {
+  customerId: string;
+  jobId?: string;
+  type: FollowUpType;
+  dueAt: string;
+  notes?: string;
+}
+
+export interface UpdateFollowUpInput {
+  status?: FollowUpStatus;
+  dueAt?: string;
+  notes?: string | null;
+}
