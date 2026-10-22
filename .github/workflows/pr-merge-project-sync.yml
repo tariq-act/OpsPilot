@@ -80,7 +80,7 @@ jobs:
                     title
                     body
                     merged
-                    html_url
+                    url
                     closingIssuesReferences(first: 100) {
                       nodes {
                         id
@@ -132,7 +132,8 @@ jobs:
               throw new Error(`PR #${prNumber} has not been merged.`);
             }
 
-            core.info(`Processing merged PR #${prNumber}: ${pr.title} (${pr.html_url})`);
+            const prUrl = pr.url || `https://github.com/${owner}/${repo}/pull/${prNumber}`;
+            core.info(`Processing merged PR #${prNumber}: ${pr.title} (${prUrl})`);
 
             // 3. Discover linked issues (via native closing references + regex scan)
             const issuesMap = new Map();
@@ -239,7 +240,7 @@ jobs:
                         owner: issue.owner,
                         repo: issue.repo,
                         issue_number: issue.number,
-                        body: `Closed automatically via merged pull request #${prNumber} ([${pr.title}](${pr.html_url})).`
+                        body: `Closed automatically via merged pull request #${prNumber} ([${pr.title}](${prUrl})).`
                       });
                     } catch (commentErr) {
                       core.warning(`Could not add comment to issue ${issueKey}: ${commentErr.message}`);
@@ -527,7 +528,7 @@ jobs:
               try {
                 let summary = core.summary
                   .addHeading("PR Merge & Project Sync", 2)
-                  .addRaw(`<p>Processed merged PR <strong>#${prNumber}</strong>: <a href="${pr.html_url}">${pr.title}</a></p>`)
+                  .addRaw(`<p>Processed merged PR <strong>#${prNumber}</strong>: <a href="${prUrl}">${pr.title}</a></p>`)
                   .addRaw(`<p>Target Project: <strong>${project.title}</strong> | Status: <strong>${doneOption.name}</strong></p>`);
 
                 if (issueResults.length > 0) {
