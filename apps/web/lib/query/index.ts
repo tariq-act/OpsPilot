@@ -108,3 +108,14 @@ export {
   useInvalidateFollowUps,
   useUpdateFollowUpMutation,
 } from "@/lib/query/follow-ups";
+
+export {
+  automationQueries,
+  useActivateAutomationRuleMutation,
+  useAutomationExecutionsQuery,
+  useAutomationRuleQuery,
+  useAutomationRulesQuery,
+  useCreateAutomationRuleMutation,
+  useDeactivateAutomationRuleMutation,
+  useUpdateAutomationRuleMutation,
+} from "@/lib/query/automation";
