@@ -11,6 +11,10 @@ on:
         required: true
         type: number
 
+concurrency:
+  group: sync-project-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
   issues: write
@@ -29,47 +33,60 @@ jobs:
       - name: Update linked issues and project
         uses: actions/github-script@v7
         env:
-          PROJECT_ID: ${{ vars.PROJECT_ID }}
-          PROJECT_STATUS_FIELD: Status
-          PROJECT_DONE_OPTION: Done
+          PROJECT_ID: ${{ vars.PROJECT_ID || vars.PROJECT_NUMBER || '1' }}
+          PROJECT_OWNER: ${{ vars.PROJECT_OWNER || github.repository_owner }}
+          PROJECT_STATUS_FIELD: ${{ vars.PROJECT_STATUS_FIELD || 'Status' }}
+          PROJECT_DONE_OPTION: ${{ vars.PROJECT_DONE_OPTION || 'Done' }}
+          AUTO_ADD_TO_PROJECT: ${{ vars.PROJECT_AUTO_ADD || 'true' }}
+          COMMENT_ON_ISSUES: ${{ vars.COMMENT_ON_ISSUES || 'true' }}
+          SYNC_PR_TO_PROJECT: ${{ vars.SYNC_PR_TO_PROJECT || 'true' }}
         with:
-          github-token: ${{ secrets.PROJECT_SYNC_TOKEN }}
+          github-token: ${{ secrets.PROJECT_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const projectId = process.env.PROJECT_ID;
+            const rawProjectId = (process.env.PROJECT_ID || "").trim();
+            const projectOwner = (process.env.PROJECT_OWNER || owner).trim();
+            const statusFieldName = (process.env.PROJECT_STATUS_FIELD || "Status").trim();
+            const doneName = (process.env.PROJECT_DONE_OPTION || "Done").trim();
+            const autoAddToProject = process.env.AUTO_ADD_TO_PROJECT !== "false";
+            const commentOnIssues = process.env.COMMENT_ON_ISSUES === "true";
+            const syncPrToProject = process.env.SYNC_PR_TO_PROJECT !== "false";
 
-            // Identify the PR for automatic or manual runs.
+            // 1. Identify and validate the PR
             const prNumber =
               context.eventName === "workflow_dispatch"
                 ? Number(context.payload.inputs.pr_number)
-                : context.payload.pull_request.number;
+                : context.payload.pull_request?.number;
 
             if (!Number.isInteger(prNumber) || prNumber < 1) {
               throw new Error("A valid PR number is required.");
             }
 
-            const { data: pr } = await github.rest.pulls.get({
-              owner,
-              repo,
-              pull_number: prNumber
-            });
-
-            if (!pr.merged) {
-              throw new Error(`PR #${prNumber} has not been merged.`);
+            if (!rawProjectId) {
+              throw new Error(
+                "PROJECT_ID is not configured. Set 'PROJECT_ID' or 'PROJECT_NUMBER' " +
+                "as a repository Actions variable (e.g. '1' or 'PVT_...')."
+              );
             }
 
-            core.info(`Processing merged PR #${prNumber}: ${pr.html_url}`);
-
-            // Find issues linked through GitHub closing keywords.
-            const linkedIssuesQuery = `
+            // 2. Fetch PR details and linked issues in a single GraphQL query
+            const prDetailsQuery = `
               query($owner: String!, $repo: String!, $number: Int!) {
                 repository(owner: $owner, name: $repo) {
                   pullRequest(number: $number) {
+                    id
+                    number
+                    title
+                    body
+                    merged
+                    html_url
                     closingIssuesReferences(first: 100) {
                       nodes {
+                        id
                         number
                         title
+                        state
                         repository {
                           name
                           owner {
@@ -86,129 +103,6 @@ jobs:
                         }
                       }
                     }
-                  }
-                }
-              }
-            `;
-
-            const linkedIssuesData = await github.graphql(
-              linkedIssuesQuery,
-              {
-                owner,
-                repo,
-                number: prNumber
-              }
-            );
-
-            const issues =
-              linkedIssuesData.repository.pullRequest
-                .closingIssuesReferences.nodes;
-
-            // Close linked issues, including issues in other repositories.
-            for (const issue of issues) {
-              const issueOwner = issue.repository.owner.login;
-              const issueRepo = issue.repository.name;
-
-              await github.rest.issues.update({
-                owner: issueOwner,
-                repo: issueRepo,
-                issue_number: issue.number,
-                state: "closed"
-              });
-
-              core.info(
-                `Closed issue ${issueOwner}/${issueRepo}#${issue.number}: ` +
-                issue.title
-              );
-            }
-
-            if (!projectId) {
-              throw new Error(
-                "PROJECT_ID is not configured. Set it as a repository " +
-                "Actions variable to the internal Project V2 ID (PVT_...)."
-              );
-            }
-
-            const statusFieldName =
-              process.env.PROJECT_STATUS_FIELD || "Status";
-            const doneName =
-              process.env.PROJECT_DONE_OPTION || "Done";
-
-            // Retrieve the target project and its fields.
-            const projectQuery = `
-              query($id: ID!) {
-                node(id: $id) {
-                  ... on ProjectV2 {
-                    id
-                    title
-                    fields(first: 100) {
-                      nodes {
-                        ... on ProjectV2FieldCommon {
-                          id
-                          name
-                        }
-                        ... on ProjectV2SingleSelectField {
-                          id
-                          name
-                          options {
-                            id
-                            name
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            `;
-
-            const projectData = await github.graphql(projectQuery, {
-              id: projectId
-            });
-
-            const project = projectData.node;
-
-            if (!project) {
-              throw new Error(
-                `Could not find Project V2 with ID "${projectId}". ` +
-                "Check the PROJECT_ID repository variable and token access."
-              );
-            }
-
-            const statusField = project.fields.nodes.find(
-              field =>
-                field.name === statusFieldName &&
-                Array.isArray(field.options)
-            );
-
-            const doneOption = statusField?.options.find(
-              option =>
-                option.name.toLowerCase() === doneName.toLowerCase()
-            );
-
-            if (!statusField || !doneOption) {
-              throw new Error(
-                `Could not find status field "${statusFieldName}" or ` +
-                `option "${doneName}" in project "${project.title}".`
-              );
-            }
-
-            // Collect linked issue items already in the target project.
-            const itemsToSync = new Map();
-
-            for (const issue of issues) {
-              for (const item of issue.projectItems.nodes) {
-                if (item.project.id === projectId) {
-                  itemsToSync.set(item.id, item);
-                }
-              }
-            }
-
-            // Also include the merged PR if it is already in the project.
-            const prItemsQuery = `
-              query($owner: String!, $repo: String!, $number: Int!) {
-                repository(owner: $owner, name: $repo) {
-                  pullRequest(number: $number) {
                     projectItems(first: 100) {
                       nodes {
                         id
@@ -222,43 +116,390 @@ jobs:
               }
             `;
 
-            const prItemsData = await github.graphql(prItemsQuery, {
+            const prData = await github.graphql(prDetailsQuery, {
               owner,
               repo,
               number: prNumber
             });
 
-            for (const item of
-              prItemsData.repository.pullRequest.projectItems.nodes) {
-              if (item.project.id === projectId) {
-                itemsToSync.set(item.id, item);
+            const pr = prData?.repository?.pullRequest;
+
+            if (!pr) {
+              throw new Error(`Pull request #${prNumber} not found in ${owner}/${repo}.`);
+            }
+
+            if (!pr.merged) {
+              throw new Error(`PR #${prNumber} has not been merged.`);
+            }
+
+            core.info(`Processing merged PR #${prNumber}: ${pr.title} (${pr.html_url})`);
+
+            // 3. Discover linked issues (via native closing references + regex scan)
+            const issuesMap = new Map();
+
+            for (const issue of pr.closingIssuesReferences?.nodes || []) {
+              const key = `${issue.repository.owner.login}/${issue.repository.name}#${issue.number}`;
+              issuesMap.set(key, {
+                id: issue.id,
+                number: issue.number,
+                title: issue.title,
+                state: issue.state,
+                owner: issue.repository.owner.login,
+                repo: issue.repository.name,
+                projectItems: issue.projectItems?.nodes || [],
+                source: "closingIssuesReferences"
+              });
+            }
+
+            // Fallback: scan PR body & title for closing statements missed by GitHub parser (e.g. "Closes #1, #2")
+            const textToScan = `${pr.title || ""}\n${pr.body || ""}`;
+            const closingBlockRegex = /\b(?:close[sd]?|fixe?[sd]?|resolve[sd]?)\s*:?\s*([^\r\n]+)/gi;
+            let blockMatch;
+
+            while ((blockMatch = closingBlockRegex.exec(textToScan)) !== null) {
+              const blockText = blockMatch[1];
+              const issueRefRegex = /(?:([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+))?#(\d+)\b/g;
+              let refMatch;
+              while ((refMatch = issueRefRegex.exec(blockText)) !== null) {
+                const issueOwner = refMatch[1] || owner;
+                const issueRepo = refMatch[2] || repo;
+                const issueNumber = parseInt(refMatch[3], 10);
+                const key = `${issueOwner}/${issueRepo}#${issueNumber}`;
+
+                if (!issuesMap.has(key)) {
+                  try {
+                    const extraIssueQuery = `
+                      query($owner: String!, $repo: String!, $number: Int!) {
+                        repository(owner: $owner, name: $repo) {
+                          issue(number: $number) {
+                            id
+                            number
+                            title
+                            state
+                            projectItems(first: 100) {
+                              nodes {
+                                id
+                                project {
+                                  id
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    `;
+                    const res = await github.graphql(extraIssueQuery, {
+                      owner: issueOwner,
+                      repo: issueRepo,
+                      number: issueNumber
+                    });
+                    const extraIssue = res?.repository?.issue;
+                    if (extraIssue) {
+                      issuesMap.set(key, {
+                        id: extraIssue.id,
+                        number: extraIssue.number,
+                        title: extraIssue.title,
+                        state: extraIssue.state,
+                        owner: issueOwner,
+                        repo: issueRepo,
+                        projectItems: extraIssue.projectItems?.nodes || [],
+                        source: "text-scan"
+                      });
+                      core.info(`Discovered additional linked issue from PR text: ${key}`);
+                    }
+                  } catch (err) {
+                    core.debug(`Could not fetch referenced issue ${key}: ${err.message}`);
+                  }
+                }
               }
             }
 
-            if (itemsToSync.size === 0) {
-              core.warning(
-                `No linked issue or PR items were found in ` +
-                `"${project.title}". No project statuses were changed.`
+            // 4. Update issue tabs (close issues and optionally leave a comment)
+            const issueResults = [];
+
+            for (const issue of issuesMap.values()) {
+              const issueKey = `${issue.owner}/${issue.repo}#${issue.number}`;
+              let statusChange = "Already closed";
+
+              if (issue.state !== "CLOSED") {
+                try {
+                  await github.rest.issues.update({
+                    owner: issue.owner,
+                    repo: issue.repo,
+                    issue_number: issue.number,
+                    state: "closed",
+                    state_reason: "completed"
+                  });
+                  statusChange = "Closed (completed)";
+                  core.info(`Closed issue ${issueKey}: ${issue.title}`);
+
+                  if (commentOnIssues) {
+                    try {
+                      await github.rest.issues.createComment({
+                        owner: issue.owner,
+                        repo: issue.repo,
+                        issue_number: issue.number,
+                        body: `Closed automatically via merged pull request #${prNumber} ([${pr.title}](${pr.html_url})).`
+                      });
+                    } catch (commentErr) {
+                      core.warning(`Could not add comment to issue ${issueKey}: ${commentErr.message}`);
+                    }
+                  }
+                } catch (err) {
+                  statusChange = `Error: ${err.message}`;
+                  core.warning(`Failed to close issue ${issueKey}: ${err.message}`);
+                }
+              } else {
+                core.info(`Issue ${issueKey} is already closed in repository issues tab.`);
+              }
+
+              issueResults.push({
+                key: issueKey,
+                title: issue.title,
+                action: statusChange
+              });
+            }
+
+            // 5. Retrieve target Project V2
+            let project = null;
+            const isNodeId = rawProjectId.startsWith("PVT_") || rawProjectId.startsWith("PN_");
+
+            if (isNodeId) {
+              const projectQuery = `
+                query($id: ID!) {
+                  node(id: $id) {
+                    ... on ProjectV2 {
+                      id
+                      title
+                      fields(first: 100) {
+                        nodes {
+                          ... on ProjectV2FieldCommon {
+                            id
+                            name
+                          }
+                          ... on ProjectV2SingleSelectField {
+                            id
+                            name
+                            options {
+                              id
+                              name
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              `;
+              const res = await github.graphql(projectQuery, { id: rawProjectId });
+              project = res?.node;
+            } else {
+              const projectNumber = parseInt(rawProjectId, 10);
+              if (isNaN(projectNumber)) {
+                throw new Error(
+                  `Invalid PROJECT_ID "${rawProjectId}". Must be a project number (e.g. 1) or GraphQL Node ID (PVT_...).`
+                );
+              }
+
+              // Try user project first (e.g. https://github.com/users/tariq-act/projects/1)
+              const userProjectQuery = `
+                query($owner: String!, $number: Int!) {
+                  user(login: $owner) {
+                    projectV2(number: $number) {
+                      id
+                      title
+                      fields(first: 100) {
+                        nodes {
+                          ... on ProjectV2FieldCommon {
+                            id
+                            name
+                          }
+                          ... on ProjectV2SingleSelectField {
+                            id
+                            name
+                            options {
+                              id
+                              name
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              `;
+
+              try {
+                const res = await github.graphql(userProjectQuery, {
+                  owner: projectOwner,
+                  number: projectNumber
+                });
+                project = res?.user?.projectV2;
+              } catch (err) {
+                core.debug(`User project lookup failed for ${projectOwner}: ${err.message}`);
+              }
+
+              // If not found under user, try organization project
+              if (!project) {
+                const orgProjectQuery = `
+                  query($owner: String!, $number: Int!) {
+                    organization(login: $owner) {
+                      projectV2(number: $number) {
+                        id
+                        title
+                        fields(first: 100) {
+                          nodes {
+                            ... on ProjectV2FieldCommon {
+                              id
+                              name
+                            }
+                            ... on ProjectV2SingleSelectField {
+                              id
+                              name
+                              options {
+                                id
+                                name
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                `;
+                try {
+                  const res = await github.graphql(orgProjectQuery, {
+                    owner: projectOwner,
+                    number: projectNumber
+                  });
+                  project = res?.organization?.projectV2;
+                } catch (err) {
+                  core.debug(`Organization project lookup failed for ${projectOwner}: ${err.message}`);
+                }
+              }
+            }
+
+            if (!project) {
+              throw new Error(
+                `Could not find Project V2 "${rawProjectId}" under owner "${projectOwner}". ` +
+                "Verify the project exists, vars.PROJECT_ID is correct, and PROJECT_SYNC_TOKEN " +
+                "has 'project' scope (required for user-owned projects)."
               );
             }
 
-            // Set each matching item to Done.
-            for (const item of itemsToSync.values()) {
-              await github.graphql(
-                `
-                  mutation(
-                    $project: ID!,
-                    $item: ID!,
-                    $field: ID!,
-                    $option: String!
-                  ) {
+            const projectV2Id = project.id;
+            core.info(`Target Project: "${project.title}" (ID: ${projectV2Id})`);
+
+            // 6. Locate Status field and Done option
+            const statusField = project.fields?.nodes?.find(
+              f => f.name && f.name.toLowerCase() === statusFieldName.toLowerCase() && Array.isArray(f.options)
+            );
+
+            if (!statusField) {
+              const availableFields = (project.fields?.nodes || [])
+                .map(f => f.name)
+                .filter(Boolean)
+                .join(", ");
+              throw new Error(
+                `Could not find single-select status field "${statusFieldName}" in project "${project.title}". ` +
+                `Available fields: [${availableFields}]`
+              );
+            }
+
+            const doneOption =
+              statusField.options.find(
+                opt => opt.name.toLowerCase() === doneName.toLowerCase()
+              ) ||
+              statusField.options.find(
+                opt => ["done", "completed", "closed", "shipped"].includes(opt.name.toLowerCase())
+              );
+
+            if (!doneOption) {
+              const availableOptions = statusField.options.map(opt => `"${opt.name}"`).join(", ");
+              throw new Error(
+                `Could not find option "${doneName}" in status field "${statusField.name}". ` +
+                `Available options: [${availableOptions}]`
+              );
+            }
+
+            // 7. Collect or add project items
+            const itemsToUpdate = new Map();
+
+            async function ensureProjectItem(contentId, label) {
+              if (!contentId) return null;
+              try {
+                const addRes = await github.graphql(`
+                  mutation($projectId: ID!, $contentId: ID!) {
+                    addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+                      item {
+                        id
+                      }
+                    }
+                  }
+                `, {
+                  projectId: projectV2Id,
+                  contentId: contentId
+                });
+                return addRes?.addProjectV2ItemById?.item?.id || null;
+              } catch (err) {
+                core.warning(`Failed to add/retrieve project item for ${label}: ${err.message}`);
+                return null;
+              }
+            }
+
+            // Add/resolve linked issues on the project board
+            for (const issue of issuesMap.values()) {
+              const existingItem = (issue.projectItems || []).find(pi => pi.project.id === projectV2Id);
+              const label = `Issue #${issue.number}: ${issue.title}`;
+
+              if (existingItem) {
+                itemsToUpdate.set(existingItem.id, label);
+              } else if (autoAddToProject && issue.id) {
+                const itemId = await ensureProjectItem(issue.id, `Issue #${issue.number}`);
+                if (itemId) {
+                  itemsToUpdate.set(itemId, label);
+                  core.info(`Added Issue #${issue.number} to project board.`);
+                }
+              }
+            }
+
+            // Add/resolve the PR itself on the project board
+            if (syncPrToProject) {
+              const existingPrItem = (pr.projectItems?.nodes || []).find(pi => pi.project.id === projectV2Id);
+              const prLabel = `PR #${prNumber}: ${pr.title}`;
+
+              if (existingPrItem) {
+                itemsToUpdate.set(existingPrItem.id, prLabel);
+              } else if (autoAddToProject && pr.id) {
+                const itemId = await ensureProjectItem(pr.id, `PR #${prNumber}`);
+                if (itemId) {
+                  itemsToUpdate.set(itemId, prLabel);
+                  core.info(`Added PR #${prNumber} to project board.`);
+                }
+              }
+            }
+
+            if (itemsToUpdate.size === 0) {
+              core.warning(
+                `No linked issue or PR items were found in or added to "${project.title}". ` +
+                "No project statuses were changed."
+              );
+            }
+
+            // 8. Update status to Done for all collected items
+            const projectResults = [];
+
+            for (const [itemId, label] of itemsToUpdate.entries()) {
+              try {
+                await github.graphql(`
+                  mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
                     updateProjectV2ItemFieldValue(
                       input: {
-                        projectId: $project
-                        itemId: $item
-                        fieldId: $field
+                        projectId: $projectId
+                        itemId: $itemId
+                        fieldId: $fieldId
                         value: {
-                          singleSelectOptionId: $option
+                          singleSelectOptionId: $optionId
                         }
                       }
                     ) {
@@ -267,20 +508,50 @@ jobs:
                       }
                     }
                   }
-                `,
-                {
-                  project: projectId,
-                  item: item.id,
-                  field: statusField.id,
-                  option: doneOption.id
-                }
-              );
-
-              core.info(`Updated project item ${item.id} to Done.`);
+                `, {
+                  projectId: projectV2Id,
+                  itemId: itemId,
+                  fieldId: statusField.id,
+                  optionId: doneOption.id
+                });
+                core.info(`Updated project item ${itemId} (${label}) to "${doneOption.name}".`);
+                projectResults.push({ label, status: `Updated to ${doneOption.name}` });
+              } catch (err) {
+                core.warning(`Failed to update status for item ${itemId} (${label}): ${err.message}`);
+                projectResults.push({ label, status: `Error: ${err.message}` });
+              }
             }
 
-            core.info(`Project: ${project.title}`);
-            core.info(`Merged PR: ${pr.html_url}`);
-            core.info(
-              `Finished. Updated ${itemsToSync.size} project item(s).`
-            );
+            // 9. Generate GitHub Actions Step Summary
+            if (core.summary) {
+              try {
+                let summary = core.summary
+                  .addHeading("PR Merge & Project Sync", 2)
+                  .addRaw(`<p>Processed merged PR <strong>#${prNumber}</strong>: <a href="${pr.html_url}">${pr.title}</a></p>`)
+                  .addRaw(`<p>Target Project: <strong>${project.title}</strong> | Status: <strong>${doneOption.name}</strong></p>`);
+
+                if (issueResults.length > 0) {
+                  summary = summary.addHeading("Issues Updated (Issue Tab)", 3).addTable([
+                    [{ data: "Issue", header: true }, { data: "Title", header: true }, { data: "Action", header: true }],
+                    ...issueResults.map(i => [i.key, i.title, i.action])
+                  ]);
+                } else {
+                  summary = summary.addRaw("<p><em>No linked issues detected for this PR.</em></p>");
+                }
+
+                if (projectResults.length > 0) {
+                  summary = summary.addHeading("Project Board Updates", 3).addTable([
+                    [{ data: "Item", header: true }, { data: "Status", header: true }],
+                    ...projectResults.map(p => [p.label, p.status])
+                  ]);
+                } else {
+                  summary = summary.addRaw("<p><em>No project items were updated.</em></p>");
+                }
+
+                await summary.write();
+              } catch (summaryErr) {
+                core.debug(`Failed to write step summary: ${summaryErr.message}`);
+              }
+            }
+
+            core.info(`Done. Processed ${issuesMap.size} issue(s) and updated ${projectResults.length} project item(s).`);
