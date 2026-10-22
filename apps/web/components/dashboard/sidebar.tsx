@@ -6,16 +6,17 @@ import {
   LuBell,
   LuBriefcase,
   LuBuilding2,
+  LuCalendarCheck,
   LuCalendarClock,
   LuChartBar,
   LuClipboardList,
   LuCompass,
   LuFileText,
   LuLogOut,
-  LuCalendarCheck,
   LuMessageSquare,
   LuSettings,
   LuUsers,
+  LuWorkflow,
   LuWrench,
 } from "react-icons/lu";
 
@@ -87,6 +88,12 @@ const navItems: NavItem[] = [
     label: "Follow-ups",
     href: "/dashboard/follow-ups",
     icon: LuCalendarCheck,
+    roles: ["OWNER", "ADMIN", "DISPATCHER"],
+  },
+  {
+    label: "Automation",
+    href: "/dashboard/automation",
+    icon: LuWorkflow,
     roles: ["OWNER", "ADMIN", "DISPATCHER"],
   },
   {
