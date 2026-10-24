@@ -93,7 +93,7 @@ const navItems: NavItem[] = [
     label: "Analytics",
     href: "/dashboard/analytics",
     icon: LuChartBar,
-    roles: ["OWNER", "ADMIN"],
+    roles: ["OWNER", "ADMIN", "DISPATCHER"],
   },
   {
     label: "Team",
