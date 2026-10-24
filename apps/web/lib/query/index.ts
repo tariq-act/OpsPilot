@@ -108,3 +108,12 @@ export {
   useInvalidateFollowUps,
   useUpdateFollowUpMutation,
 } from "@/lib/query/follow-ups";
+
+export {
+  analyticsQueries,
+  useAnalyticsCustomersQuery,
+  useAnalyticsJobsQuery,
+  useAnalyticsOverviewQuery,
+  useAnalyticsRevenueQuery,
+  useAnalyticsTechniciansQuery,
+} from "@/lib/query/analytics";
