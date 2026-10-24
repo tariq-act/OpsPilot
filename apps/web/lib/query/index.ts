@@ -117,3 +117,14 @@ export {
   useAnalyticsRevenueQuery,
   useAnalyticsTechniciansQuery,
 } from "@/lib/query/analytics";
+
+export {
+  automationQueries,
+  useActivateAutomationRuleMutation,
+  useAutomationExecutionsQuery,
+  useAutomationRuleQuery,
+  useAutomationRulesQuery,
+  useCreateAutomationRuleMutation,
+  useDeactivateAutomationRuleMutation,
+  useUpdateAutomationRuleMutation,
+} from "@/lib/query/automation";

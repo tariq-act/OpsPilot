@@ -857,3 +857,166 @@ export interface AnalyticsCustomers {
 export interface AnalyticsCustomersResponse {
   customers: AnalyticsCustomers;
 }
+
+// ---------------------------------------------------------------------------
+// Automation rules
+// ---------------------------------------------------------------------------
+
+export type AutomationTrigger =
+  | "JOB_COMPLETED"
+  | "INVOICE_SENT"
+  | "PAYMENT_RECEIVED"
+  | "FOLLOW_UP_DUE";
+
+export type AutomationActionType =
+  | "CREATE_INVOICE"
+  | "SEND_NOTIFICATION"
+  | "SCHEDULE_FOLLOW_UP"
+  | "SEND_PAYMENT_REMINDER";
+
+export type AutomationExecutionStatus =
+  | "PENDING"
+  | "RUNNING"
+  | "SUCCEEDED"
+  | "FAILED";
+
+export type AutomationConditionOperator = "eq" | "neq";
+
+export type AutomationConditionMatch = "all" | "any";
+
+export type AutomationConditionField =
+  | "customerId"
+  | "jobId"
+  | "invoiceId"
+  | "paymentId"
+  | "followUpId"
+  | "followUpType"
+  | "currency"
+  | "method";
+
+export interface AutomationConditionRule {
+  field: AutomationConditionField | string;
+  operator: AutomationConditionOperator;
+  value: string;
+}
+
+export interface AutomationConditions {
+  match: AutomationConditionMatch;
+  rules: AutomationConditionRule[];
+}
+
+export interface AutomationActionItem {
+  type: InvoiceItemType;
+  description: string;
+  quantity: string;
+  unitPrice: string;
+}
+
+export interface AutomationAction {
+  type: AutomationActionType;
+  items?: AutomationActionItem[];
+  discount?: string;
+  tax?: string;
+  dueInDays?: number;
+  channel?: NotificationChannel;
+  followUpType?: FollowUpType;
+  notes?: string;
+}
+
+export interface AutomationRule {
+  id: string;
+  organizationId: string;
+  name: string;
+  description: string | null;
+  triggerEvent: AutomationTrigger;
+  conditions: AutomationConditions;
+  actions: AutomationAction[];
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AutomationRuleListResponse {
+  rules: AutomationRule[];
+}
+
+export interface AutomationRuleResponse {
+  rule: AutomationRule;
+}
+
+export interface ListAutomationRulesQuery {
+  triggerEvent?: AutomationTrigger;
+  isActive?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export interface CreateAutomationRuleInput {
+  name: string;
+  description?: string;
+  triggerEvent: AutomationTrigger;
+  conditions: AutomationConditions;
+  actions: AutomationAction[];
+  isActive?: boolean;
+}
+
+export interface UpdateAutomationRuleInput {
+  name?: string;
+  description?: string | null;
+  triggerEvent?: AutomationTrigger;
+  conditions?: AutomationConditions;
+  actions?: AutomationAction[];
+}
+
+export interface AutomationExecutionInput {
+  triggerEvent: AutomationTrigger;
+  eventId: string;
+  customerId: string | null;
+  jobId: string | null;
+  invoiceId: string | null;
+  paymentId: string | null;
+  followUpId: string | null;
+  followUpType: string | null;
+  currency: string | null;
+  method: string | null;
+}
+
+export interface AutomationExecutionActionResult {
+  index: number;
+  type: string;
+  status: "SUCCEEDED";
+  output: Record<string, string>;
+}
+
+export interface AutomationExecutionResult {
+  outcome?: "completed" | "closed";
+  actions: AutomationExecutionActionResult[];
+}
+
+export interface AutomationExecution {
+  id: string;
+  organizationId: string;
+  ruleId: string;
+  eventId: string;
+  status: AutomationExecutionStatus;
+  input: AutomationExecutionInput;
+  result: AutomationExecutionResult | null;
+  error: string | null;
+  idempotencyKey: string;
+  attemptCount: number;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AutomationExecutionListResponse {
+  executions: AutomationExecution[];
+}
+
+export interface ListAutomationExecutionsQuery {
+  status?: AutomationExecutionStatus;
+  limit?: number;
+  offset?: number;
+}

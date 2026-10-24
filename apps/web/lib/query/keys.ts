@@ -168,4 +168,26 @@ export const queryKeys = {
         filters,
       ] as const,
   },
+
+  automation: {
+    all: (organizationId: string) => ["automation", organizationId] as const,
+    lists: (organizationId: string) =>
+      [...queryKeys.automation.all(organizationId), "list"] as const,
+    list: (
+      organizationId: string,
+      filters: Record<string, string | undefined> = {},
+    ) => [...queryKeys.automation.lists(organizationId), filters] as const,
+    detail: (organizationId: string, id: string) =>
+      [...queryKeys.automation.all(organizationId), "detail", id] as const,
+    executions: (
+      organizationId: string,
+      ruleId: string,
+      filters: Record<string, string | undefined> = {},
+    ) =>
+      [
+        ...queryKeys.automation.detail(organizationId, ruleId),
+        "executions",
+        filters,
+      ] as const,
+  },
 } as const;
