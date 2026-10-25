@@ -11,6 +11,7 @@ import {
   LuChartBar,
   LuClipboardList,
   LuFileText,
+  LuHistory,
   LuLogOut,
   LuMessageSquare,
   LuSettings,
@@ -101,6 +102,12 @@ const navItems: NavItem[] = [
     href: "/dashboard/analytics",
     icon: LuChartBar,
     roles: ["OWNER", "ADMIN", "DISPATCHER"],
+  },
+  {
+    label: "Audit Logs",
+    href: "/dashboard/audit-logs",
+    icon: LuHistory,
+    roles: ["OWNER", "ADMIN"],
   },
   {
     label: "Team",
