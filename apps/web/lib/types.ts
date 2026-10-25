@@ -730,6 +730,135 @@ export interface UpdateFollowUpInput {
 }
 
 // ---------------------------------------------------------------------------
+// Analytics
+// ---------------------------------------------------------------------------
+
+export type RevenueTrendPeriod = "day" | "week" | "month";
+
+export interface AnalyticsDateRange {
+  fromDate: string | null;
+  toDate: string | null;
+}
+
+export interface AnalyticsDateRangeQuery {
+  fromDate?: string;
+  toDate?: string;
+}
+
+export interface AnalyticsPageQuery extends AnalyticsDateRangeQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface AnalyticsOverview {
+  totalCustomers: number;
+  openRequests: number;
+  activeJobs: number;
+  completedJobs: number;
+  outstandingInvoices: number;
+  revenueCollected: string;
+  invoicedAmount: string;
+  outstandingBalance: string;
+  currency: string | null;
+  range: AnalyticsDateRange;
+}
+
+export interface AnalyticsOverviewResponse {
+  overview: AnalyticsOverview;
+}
+
+export interface JobStatusCount {
+  status: string;
+  count: number;
+}
+
+export interface AnalyticsJobs {
+  byStatus: JobStatusCount[];
+  total: number;
+  completed: number;
+  cancelled: number;
+  completionRate: number;
+  cancellationRate: number;
+  range: AnalyticsDateRange;
+}
+
+export interface AnalyticsJobsResponse {
+  jobs: AnalyticsJobs;
+}
+
+export interface RevenueTrendPoint {
+  periodStart: string;
+  amount: string;
+  paymentCount: number;
+}
+
+export interface AnalyticsRevenue {
+  paymentsReceived: string;
+  paymentCount: number;
+  outstandingBalance: string;
+  invoicedAmount: string;
+  period: RevenueTrendPeriod;
+  trends: RevenueTrendPoint[];
+  currency: string | null;
+  range: AnalyticsDateRange;
+}
+
+export interface AnalyticsRevenueResponse {
+  revenue: AnalyticsRevenue;
+}
+
+export interface ListAnalyticsRevenueQuery extends AnalyticsDateRangeQuery {
+  period?: RevenueTrendPeriod;
+}
+
+export interface TechnicianWorkload {
+  technicianId: string;
+  employeeCode: string;
+  status: string;
+  userId: string;
+  assignedJobs: number;
+  completedJobs: number;
+  activeJobs: number;
+}
+
+export interface AnalyticsTechnicians {
+  technicians: TechnicianWorkload[];
+  total: number;
+  limit: number;
+  offset: number;
+  range: AnalyticsDateRange;
+}
+
+export interface AnalyticsTechniciansResponse {
+  technicians: AnalyticsTechnicians;
+}
+
+export interface CustomerActivity {
+  customerId: string;
+  name: string;
+  status: string;
+  serviceRequestCount: number;
+  completedJobCount: number;
+  createdAt: string;
+}
+
+export interface AnalyticsCustomers {
+  newCustomers: number;
+  repeatCustomers: number;
+  serviceRequestCount: number;
+  customersWithCompletedJobs: number;
+  customers: CustomerActivity[];
+  total: number;
+  limit: number;
+  offset: number;
+  range: AnalyticsDateRange;
+}
+
+export interface AnalyticsCustomersResponse {
+  customers: AnalyticsCustomers;
+}
+
+// ---------------------------------------------------------------------------
 // Automation rules
 // ---------------------------------------------------------------------------
 

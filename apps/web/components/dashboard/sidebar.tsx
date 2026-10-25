@@ -10,7 +10,6 @@ import {
   LuCalendarClock,
   LuChartBar,
   LuClipboardList,
-  LuCompass,
   LuFileText,
   LuLogOut,
   LuMessageSquare,
@@ -20,6 +19,7 @@ import {
   LuWrench,
 } from "react-icons/lu";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { useOrg } from "@/components/providers/org-provider";
 import { Badge } from "@/components/ui/badge";
 import { authClient } from "@/lib/auth-client";
@@ -100,7 +100,7 @@ const navItems: NavItem[] = [
     label: "Analytics",
     href: "/dashboard/analytics",
     icon: LuChartBar,
-    roles: ["OWNER", "ADMIN"],
+    roles: ["OWNER", "ADMIN", "DISPATCHER"],
   },
   {
     label: "Team",
@@ -141,11 +141,13 @@ export function DashboardSidebar({ role }: { role: MemberRole }) {
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-background-subtle">
       {/* Brand */}
-      <div className="flex h-16 items-center gap-3 border-b border-border px-4">
-        <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-          <LuCompass className="size-4" aria-hidden="true" />
-        </span>
-        <span className="text-base font-semibold tracking-tight">OpsPilot</span>
+      <div className="flex h-16 items-center gap-2 border-b border-border px-4">
+        <div className="flex min-w-0 items-center gap-1">
+          <BrandLogo size={40} priority />
+          <span className="text-base font-semibold tracking-tight">
+            OpsPilot
+          </span>
+        </div>
         <Badge
           variant="secondary"
           className="ml-auto bg-primary/10 text-primary hover:bg-primary/10"

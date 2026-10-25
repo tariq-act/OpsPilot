@@ -110,6 +110,15 @@ export {
 } from "@/lib/query/follow-ups";
 
 export {
+  analyticsQueries,
+  useAnalyticsCustomersQuery,
+  useAnalyticsJobsQuery,
+  useAnalyticsOverviewQuery,
+  useAnalyticsRevenueQuery,
+  useAnalyticsTechniciansQuery,
+} from "@/lib/query/analytics";
+
+export {
   automationQueries,
   useActivateAutomationRuleMutation,
   useAutomationExecutionsQuery,

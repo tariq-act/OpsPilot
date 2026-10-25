@@ -133,6 +133,42 @@ export const queryKeys = {
       [...queryKeys.followUps.all(organizationId), "detail", id] as const,
   },
 
+  analytics: {
+    all: (organizationId: string) => ["analytics", organizationId] as const,
+    overview: (
+      organizationId: string,
+      filters: Record<string, string | undefined> = {},
+    ) =>
+      [...queryKeys.analytics.all(organizationId), "overview", filters] as const,
+    jobs: (
+      organizationId: string,
+      filters: Record<string, string | undefined> = {},
+    ) => [...queryKeys.analytics.all(organizationId), "jobs", filters] as const,
+    revenue: (
+      organizationId: string,
+      filters: Record<string, string | undefined> = {},
+    ) =>
+      [...queryKeys.analytics.all(organizationId), "revenue", filters] as const,
+    technicians: (
+      organizationId: string,
+      filters: Record<string, string | undefined> = {},
+    ) =>
+      [
+        ...queryKeys.analytics.all(organizationId),
+        "technicians",
+        filters,
+      ] as const,
+    customers: (
+      organizationId: string,
+      filters: Record<string, string | undefined> = {},
+    ) =>
+      [
+        ...queryKeys.analytics.all(organizationId),
+        "customers",
+        filters,
+      ] as const,
+  },
+
   automation: {
     all: (organizationId: string) => ["automation", organizationId] as const,
     lists: (organizationId: string) =>
