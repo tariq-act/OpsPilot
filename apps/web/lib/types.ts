@@ -610,14 +610,34 @@ export interface CreatePaymentInput {
 export interface AuditLog {
   id: string;
   organizationId: string;
+  actorUserId: string | null;
   action: string;
   entityType: string;
   entityId: string;
+  metadata: Record<string, unknown>;
+  ipAddress: string | null;
+  userAgent: string | null;
   createdAt: string;
 }
 
 export interface AuditLogListResponse {
   auditLogs: AuditLog[];
+}
+
+export interface AuditLogResponse {
+  auditLog: AuditLog;
+}
+
+/** Query params for GET /audit-logs (server-side filters only). */
+export interface ListAuditLogsQuery {
+  actorUserId?: string;
+  action?: string;
+  entityType?: string;
+  entityId?: string;
+  fromDate?: string;
+  toDate?: string;
+  limit?: number;
+  offset?: number;
 }
 
 // ---------------------------------------------------------------------------

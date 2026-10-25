@@ -106,6 +106,8 @@ export const queryKeys = {
       organizationId: string,
       filters: Record<string, string | number | undefined>,
     ) => [...queryKeys.auditLogs.lists(organizationId), filters] as const,
+    detail: (organizationId: string, id: string) =>
+      [...queryKeys.auditLogs.all(organizationId), "detail", id] as const,
   },
 
   notifications: {

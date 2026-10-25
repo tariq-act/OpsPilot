@@ -88,6 +88,7 @@ export {
 
 export {
   auditLogQueries,
+  useAuditLogQuery,
   useAuditLogsQuery,
   useInvalidateAuditLogs,
 } from "@/lib/query/audit-logs";

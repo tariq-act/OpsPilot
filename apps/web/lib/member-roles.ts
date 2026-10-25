@@ -48,3 +48,10 @@ export function isAutomationManagerRole(
 ): boolean {
   return isJobManagerRole(role);
 }
+
+/** Mirrors audit log viewers on the API (owners and admins only). */
+export function isAuditViewerRole(
+  role: MemberRole | null | undefined,
+): boolean {
+  return role === "OWNER" || role === "ADMIN";
+}
