@@ -4,10 +4,9 @@
  * Organization scope is the `x-organization-id` header, never the body.
  */
 
-import { api } from "@/lib/api";
+import { listAuditLogs as listAuditLogsResource } from "@/lib/api/audit-logs";
 import { listInvoices as listInvoicesResource } from "@/lib/api/invoices";
 import { listJobs as listJobsResource } from "@/lib/api/jobs";
-import { organizationHeaders } from "@/lib/api/org-headers";
 import { listServiceRequests as listServiceRequestsResource } from "@/lib/api/service-requests";
 import { listTechnicians as listTechniciansResource } from "@/lib/api/technicians";
 import type {
@@ -48,10 +47,9 @@ export function listAuditLogs(
     entityId?: string;
   },
 ): Promise<AuditLogListResponse> {
-  const params = new URLSearchParams({ limit: String(limit) });
-  if (filters?.entityType) params.set("entityType", filters.entityType);
-  if (filters?.entityId) params.set("entityId", filters.entityId);
-  return api.get<AuditLogListResponse>(`/audit-logs?${params.toString()}`, {
-    headers: organizationHeaders(organizationId),
+  return listAuditLogsResource(organizationId, {
+    limit,
+    entityType: filters?.entityType,
+    entityId: filters?.entityId,
   });
 }

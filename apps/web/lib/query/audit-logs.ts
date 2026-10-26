@@ -2,28 +2,52 @@
 
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { listAuditLogs } from "@/lib/api/dashboard";
+import { getAuditLog, listAuditLogs } from "@/lib/api/audit-logs";
 import { ApiError } from "@/lib/api";
 import { queryKeys } from "@/lib/query/keys";
 import { getServerQueryState } from "@/lib/query/query-state";
-import type { AuditLogListResponse } from "@/lib/types";
+import type {
+  AuditLogListResponse,
+  ListAuditLogsQuery,
+} from "@/lib/types";
 
-type AuditListFilters = {
-  limit: number;
-  entityType?: string;
-  entityId?: string;
-};
+function listFilterKey(query?: ListAuditLogsQuery) {
+  return {
+    actorUserId: query?.actorUserId,
+    action: query?.action,
+    entityType: query?.entityType,
+    entityId: query?.entityId,
+    fromDate: query?.fromDate,
+    toDate: query?.toDate,
+    limit: query?.limit === undefined ? undefined : String(query.limit),
+    offset: query?.offset === undefined ? undefined : String(query.offset),
+  };
+}
 
 export const auditLogQueries = {
-  list: (organizationId: string, filters: AuditListFilters, enabled = true) =>
+  list: (
+    organizationId: string,
+    query?: ListAuditLogsQuery,
+    enabled = true,
+  ) =>
     queryOptions({
-      queryKey: queryKeys.auditLogs.list(organizationId, filters),
-      queryFn: () =>
-        listAuditLogs(organizationId, filters.limit, {
-          entityType: filters.entityType,
-          entityId: filters.entityId,
-        }),
+      queryKey: queryKeys.auditLogs.list(
+        organizationId,
+        listFilterKey(query),
+      ),
+      queryFn: () => listAuditLogs(organizationId, query),
       enabled: Boolean(organizationId) && enabled,
+      retry(failureCount, error) {
+        if (error instanceof ApiError && error.isForbidden) return false;
+        return failureCount < 2;
+      },
+    }),
+
+  detail: (organizationId: string, auditLogId: string, enabled = true) =>
+    queryOptions({
+      queryKey: queryKeys.auditLogs.detail(organizationId, auditLogId),
+      queryFn: () => getAuditLog(organizationId, auditLogId),
+      enabled: Boolean(organizationId) && Boolean(auditLogId) && enabled,
       retry(failureCount, error) {
         if (error instanceof ApiError && error.isForbidden) return false;
         return failureCount < 2;
@@ -31,28 +55,56 @@ export const auditLogQueries = {
     }),
 };
 
+/**
+ * List audit logs. Call sites that pass a numeric limit keep working;
+ * the audit logs page passes a full ListAuditLogsQuery.
+ */
 export function useAuditLogsQuery(
   organizationId: string,
-  limit: number,
+  limitOrQuery: number | ListAuditLogsQuery = 50,
   enabled = true,
-  filters?: Omit<AuditListFilters, "limit">,
+  filters?: Pick<ListAuditLogsQuery, "entityType" | "entityId">,
 ) {
-  const query = useQuery(
-    auditLogQueries.list(
-      organizationId,
-      { limit, entityType: filters?.entityType, entityId: filters?.entityId },
-      enabled,
-    ),
+  const query: ListAuditLogsQuery =
+    typeof limitOrQuery === "number"
+      ? {
+          limit: limitOrQuery,
+          entityType: filters?.entityType,
+          entityId: filters?.entityId,
+        }
+      : limitOrQuery;
+
+  const result = useQuery(
+    auditLogQueries.list(organizationId, query, enabled),
   );
   const state = getServerQueryState(
-    query,
+    result,
     (data) => data.auditLogs.length === 0,
   );
-  const forbidden = query.error instanceof ApiError && query.error.isForbidden;
+  const forbidden = result.error instanceof ApiError && result.error.isForbidden;
 
   return {
-    ...query,
-    auditLogs: query.data?.auditLogs ?? [],
+    ...result,
+    auditLogs: result.data?.auditLogs ?? [],
+    forbidden,
+    server: state,
+  };
+}
+
+export function useAuditLogQuery(
+  organizationId: string,
+  auditLogId: string,
+  enabled = true,
+) {
+  const result = useQuery(
+    auditLogQueries.detail(organizationId, auditLogId, enabled),
+  );
+  const state = getServerQueryState(result);
+  const forbidden = result.error instanceof ApiError && result.error.isForbidden;
+
+  return {
+    ...result,
+    auditLog: result.data?.auditLog ?? null,
     forbidden,
     server: state,
   };
