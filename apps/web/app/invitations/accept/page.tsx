@@ -8,6 +8,7 @@ import { BrandMark } from "@/components/auth/brand-mark";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
+import { toUserErrorMessage } from "@/lib/query/errors";
 import type { AcceptInvitationResponse } from "@/lib/types";
 
 type State = "loading" | "success" | "error";
@@ -60,7 +61,7 @@ function AcceptInvitationContent() {
         }
         setState("error");
         setErrorMessage(
-          err instanceof Error ? err.message : "Unable to accept invitation.",
+          toUserErrorMessage(err, "Unable to accept invitation."),
         );
       });
   }, [token, sessionLoading, session, pathname, searchParams, router]);
