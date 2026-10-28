@@ -554,7 +554,9 @@ export class InvoicesService {
       });
     }
 
-    if (!canTransitionInvoiceStatus(existing.status, 'SENT')) {
+    // Send is DRAFT → SENT only. Payment/refund balance code may reopen PAID
+    // invoices to SENT, but clients must not "re-send" paid invoices that way.
+    if (existing.status !== 'DRAFT') {
       throw new ConflictException({
         statusCode: 409,
         message: `Cannot send an invoice in ${existing.status} status`,
@@ -734,10 +736,13 @@ export class InvoicesService {
     const result: Invoice[] = [];
 
     for (const row of rows) {
+      const pastDue =
+        Boolean(row.dueAt) && row.dueAt!.getTime() < now.getTime();
+      // SENT past due → OVERDUE. PARTIALLY_PAID stays PARTIALLY_PAID so
+      // payment UX remains clear; overdue amount is still amountDue.
       if (
         row.status === 'SENT' &&
-        row.dueAt &&
-        row.dueAt.getTime() < now.getTime() &&
+        pastDue &&
         canTransitionInvoiceStatus(row.status, 'OVERDUE')
       ) {
         const updated = await updateInvoiceStatusInOrganization({

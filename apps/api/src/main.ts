@@ -13,6 +13,13 @@ if (existsSync(envFile)) {
 }
 
 async function bootstrap() {
+  const authSecret = process.env.BETTER_AUTH_SECRET?.trim();
+  if (!authSecret || authSecret.length < 32) {
+    throw new Error(
+      'BETTER_AUTH_SECRET must be set to a string of at least 32 characters. Generate one with: openssl rand -base64 32',
+    );
+  }
+
   const app = await NestFactory.create(AppModule, {
     // Required so Better Auth can read the raw request body.
     // @thallesp/nestjs-better-auth re-adds parsers for non-auth routes.

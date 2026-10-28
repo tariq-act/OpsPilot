@@ -52,6 +52,19 @@ async function invalidateInvoiceViews(
       queryKey: queryKeys.invoices.payments(organizationId, invoiceId),
     });
   }
+  // Send/payment may trigger automation follow-ups and notifications.
+  await queryClient.invalidateQueries({
+    queryKey: queryKeys.followUps.all(organizationId),
+  });
+  await queryClient.invalidateQueries({
+    queryKey: queryKeys.notifications.all(organizationId),
+  });
+  await queryClient.invalidateQueries({
+    queryKey: queryKeys.analytics.all(organizationId),
+  });
+  await queryClient.invalidateQueries({
+    queryKey: queryKeys.auditLogs.all(organizationId),
+  });
 }
 
 function cacheInvoice(
