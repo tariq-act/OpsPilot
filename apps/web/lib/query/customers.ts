@@ -82,6 +82,21 @@ function cacheCustomer(
   );
 }
 
+async function invalidateCustomerSideEffects(
+  queryClient: ReturnType<typeof useQueryClient>,
+  organizationId: string,
+) {
+  await queryClient.invalidateQueries({
+    queryKey: queryKeys.customers.lists(organizationId),
+  });
+  await queryClient.invalidateQueries({
+    queryKey: queryKeys.auditLogs.all(organizationId),
+  });
+  await queryClient.invalidateQueries({
+    queryKey: queryKeys.analytics.all(organizationId),
+  });
+}
+
 export function useCreateCustomerMutation(organizationId: string) {
   const queryClient = useQueryClient();
 
@@ -90,9 +105,7 @@ export function useCreateCustomerMutation(organizationId: string) {
       createCustomer(organizationId, input),
     onSuccess: async (data) => {
       cacheCustomer(queryClient, organizationId, data);
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.customers.lists(organizationId),
-      });
+      await invalidateCustomerSideEffects(queryClient, organizationId);
     },
   });
 }
@@ -110,9 +123,7 @@ export function useUpdateCustomerMutation(organizationId: string) {
     }) => updateCustomer(organizationId, id, body),
     onSuccess: async (data) => {
       cacheCustomer(queryClient, organizationId, data);
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.customers.lists(organizationId),
-      });
+      await invalidateCustomerSideEffects(queryClient, organizationId);
     },
   });
 }
@@ -124,9 +135,7 @@ export function useDeactivateCustomerMutation(organizationId: string) {
     mutationFn: (id: string) => deactivateCustomer(organizationId, id),
     onSuccess: async (data) => {
       cacheCustomer(queryClient, organizationId, data);
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.customers.lists(organizationId),
-      });
+      await invalidateCustomerSideEffects(queryClient, organizationId);
     },
   });
 }
