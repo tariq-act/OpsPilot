@@ -4,7 +4,10 @@ import { redirect } from "next/navigation";
 
 import { OrgProvider } from "@/components/providers/org-provider";
 import { OrgGuard } from "@/components/providers/org-guard";
-import { DashboardSidebar } from "@/components/dashboard/sidebar";
+import {
+  DashboardSidebar,
+  MobileNavTrigger,
+} from "@/components/dashboard/sidebar";
 import { NotificationsHeaderLink } from "@/components/notifications/notifications-header-link";
 import type { MemberRole } from "@/lib/types";
 
@@ -83,11 +86,14 @@ function DashboardShell({
   return (
     <div className="flex min-h-screen bg-background">
       <DashboardSidebar role={session.role} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 shrink-0 items-center justify-end border-b border-border bg-background px-4 sm:px-6">
-          <NotificationsHeaderLink />
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-4 sm:px-6">
+          <MobileNavTrigger role={session.role} />
+          <div className="ml-auto">
+            <NotificationsHeaderLink />
+          </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
       </div>
     </div>
   );
