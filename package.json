@@ -12,7 +12,9 @@
     "test:e2e": "turbo run test:e2e",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
-    "db:status": "docker compose ps"
+    "db:status": "docker compose ps",
+    "db:migrate": "bun run --filter=api db:migrate",
+    "db:generate": "bun run --filter=api db:generate"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
