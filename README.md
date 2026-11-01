@@ -477,4 +477,8 @@ zero tests.
 
 ## License
 
-Private / `UNLICENSED` (see `apps/api/package.json`).
+Copyright © 2026 Tariq Khan. All Rights Reserved.
+
+This repository is a personal portfolio project. Public access is for viewing
+and interview evaluation only. It does **not** grant permission to copy,
+redistribute, modify, or commercially reuse the code. See [LICENSE](LICENSE).
