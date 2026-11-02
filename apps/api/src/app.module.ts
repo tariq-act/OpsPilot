@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule as BetterAuthModule } from '@thallesp/nestjs-better-auth';
 import { AnalyticsModule } from './analytics/analytics.module.js';
 import { AuditModule } from './audit/audit.module.js';
@@ -6,6 +8,7 @@ import { AutomationModule } from './automation/automation.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { DatabaseModule } from './db/database.module.js';
 import { HealthModule } from './health/health.module.js';
 import { auth } from './lib/auth.js';
 import { CustomersModule } from './customers/customers.module.js';
@@ -20,6 +23,17 @@ import { TechniciansModule } from './technicians/technicians.module.js';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          name: 'default',
+          // 120 requests per minute per IP — enough for dashboard use, limits abuse.
+          ttl: 60_000,
+          limit: 120,
+        },
+      ],
+    }),
+    DatabaseModule,
     BetterAuthModule.forRoot({
       auth,
     }),
@@ -39,6 +53,12 @@ import { TechniciansModule } from './technicians/technicians.module.js';
     HealthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

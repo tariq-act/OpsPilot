@@ -13,7 +13,10 @@
     "BETTER_AUTH_SECRET",
     "BETTER_AUTH_URL",
     "WEB_ORIGIN",
-    "NEXT_PUBLIC_API_URL"
+    "NEXT_PUBLIC_API_URL",
+    "NEXT_PUBLIC_APP_URL",
+    "PORT",
+    "SWAGGER_ENABLED"
   ],
   "tasks": {
     "build": {

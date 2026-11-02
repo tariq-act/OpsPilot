@@ -16,10 +16,14 @@ permissions:
 
 env:
   TURBO_TELEMETRY_DISABLED: "1"
+  # Placeholders so production builds / typegen do not need real secrets.
+  # These are not production credentials.
+  NEXT_PUBLIC_API_URL: "http://localhost:3000"
+  NEXT_PUBLIC_APP_URL: "http://localhost:3001"
 
 jobs:
   ci:
-    name: Lint, type-check, and build
+    name: Lint, type-check, test, and build
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -62,13 +66,8 @@ jobs:
       - name: Type check
         run: bun run check-types
 
-      # - name: Unit tests
-      #   working-directory: apps/api
-      #   run: bun run test
-
-      # - name: E2E tests
-      #   working-directory: apps/api
-      #   run: bun run test:e2e
+      - name: Unit tests
+        run: bun run test
 
       - name: Production build
         run: bun run build
