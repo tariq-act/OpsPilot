@@ -6,7 +6,11 @@ import { cn } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
+const appOrigin =
+  process.env.NEXT_PUBLIC_APP_URL?.trim() || "http://localhost:3001";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(appOrigin),
   title: {
     default: "OpsPilot",
     template: "%s · OpsPilot",

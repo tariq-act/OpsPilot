@@ -14,6 +14,7 @@ const config: Config = {
   moduleFileExtensions: ['js', 'json', 'ts'],
   rootDir: '.',
   testRegex: '.*\\.spec\\.ts$',
+  passWithNoTests: true,
   transform: {
     '^.+\\.(t|j)s$': 'ts-jest',
   },

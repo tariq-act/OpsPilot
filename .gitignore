@@ -26,9 +26,9 @@ out/
 build
 dist
 
-# Prisma generated client (regenerated via prisma:generate / build)
-apps/api/src/generated/
-
+# Local file uploads (job photos); never commit binaries
+apps/api/uploads/
+uploads/
 
 # Debug
 npm-debug.log*
@@ -38,3 +38,7 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+*.key
+*.p12
+credentials.json
+service-account*.json
