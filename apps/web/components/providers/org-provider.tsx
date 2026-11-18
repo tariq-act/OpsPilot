@@ -64,7 +64,7 @@ function getServerOrgId(): string | null {
 }
 
 export function OrgProvider({ children }: { children: ReactNode }) {
-  const { organizations, server, refetch, isPending, isError, error } =
+  const { organizations, server, refetch, isPending, isError } =
     useOrganizationsQuery();
 
   const storedId = useSyncExternalStore(
@@ -87,10 +87,10 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   }, [refetch]);
 
   const loading = isPending && organizations.length === 0;
-  const errorMessage =
-    isError && error instanceof Error
-      ? error.message
-      : (server.error?.message ?? null);
+  const errorMessage = isError
+    ? (server.error?.message ??
+      "Unable to load organizations. Please try again.")
+    : null;
 
   return (
     <OrgContext.Provider

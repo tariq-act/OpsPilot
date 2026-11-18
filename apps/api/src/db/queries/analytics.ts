@@ -55,15 +55,22 @@ function pushTimestampRange(
   if (range?.toDate) conditions.push(lte(column, range.toDate));
 }
 
-/** Prefer paidAt; fall back to createdAt when paidAt is null. */
-function paymentEffectiveAtSql() {
-  return sql`coalesce(${payment.paidAt}, ${payment.createdAt})`;
-}
-
+/**
+ * Prefer paidAt; fall back to createdAt when paidAt is null.
+ * Dates in raw `sql` fragments must be ISO strings — postgres.js rejects
+ * Date objects in tagged templates (ERR_INVALID_ARG_TYPE / Buffer.byteLength).
+ */
 function pushPaymentPaidRange(conditions: SQL[], range?: AnalyticsDateRange) {
-  const effective = paymentEffectiveAtSql();
-  if (range?.fromDate) conditions.push(sql`${effective} >= ${range.fromDate}`);
-  if (range?.toDate) conditions.push(sql`${effective} <= ${range.toDate}`);
+  if (range?.fromDate) {
+    conditions.push(
+      sql`coalesce(${payment.paidAt}, ${payment.createdAt}) >= ${range.fromDate.toISOString()}`,
+    );
+  }
+  if (range?.toDate) {
+    conditions.push(
+      sql`coalesce(${payment.paidAt}, ${payment.createdAt}) <= ${range.toDate.toISOString()}`,
+    );
+  }
 }
 
 export async function countActiveCustomers(
@@ -185,12 +192,12 @@ export async function sumInvoicedAmounts(
   ];
   if (range?.fromDate) {
     conditions.push(
-      sql`coalesce(${invoice.issuedAt}, ${invoice.createdAt}) >= ${range.fromDate}`,
+      sql`coalesce(${invoice.issuedAt}, ${invoice.createdAt}) >= ${range.fromDate.toISOString()}`,
     );
   }
   if (range?.toDate) {
     conditions.push(
-      sql`coalesce(${invoice.issuedAt}, ${invoice.createdAt}) <= ${range.toDate}`,
+      sql`coalesce(${invoice.issuedAt}, ${invoice.createdAt}) <= ${range.toDate.toISOString()}`,
     );
   }
 
@@ -256,7 +263,7 @@ export async function listRevenueTrends(
   ];
   pushPaymentPaidRange(conditions, range);
 
-  const effective = paymentEffectiveAtSql();
+  const effective = sql`coalesce(${payment.paidAt}, ${payment.createdAt})`;
   const bucket =
     period === 'day'
       ? sql<string>`to_char(date_trunc('day', ${effective}), 'YYYY-MM-DD')`
@@ -455,16 +462,16 @@ export async function listCustomerActivity(
     .where(and(...customerConditions));
 
   const srFrom = range?.fromDate
-    ? sql`and ${serviceRequest.createdAt} >= ${range.fromDate}`
+    ? sql`and ${serviceRequest.createdAt} >= ${range.fromDate.toISOString()}`
     : sql``;
   const srTo = range?.toDate
-    ? sql`and ${serviceRequest.createdAt} <= ${range.toDate}`
+    ? sql`and ${serviceRequest.createdAt} <= ${range.toDate.toISOString()}`
     : sql``;
   const jobFrom = range?.fromDate
-    ? sql`and ${job.completedAt} >= ${range.fromDate}`
+    ? sql`and ${job.completedAt} >= ${range.fromDate.toISOString()}`
     : sql``;
   const jobTo = range?.toDate
-    ? sql`and ${job.completedAt} <= ${range.toDate}`
+    ? sql`and ${job.completedAt} <= ${range.toDate.toISOString()}`
     : sql``;
 
   const srCount = sql<number>`(

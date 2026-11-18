@@ -35,9 +35,23 @@ export function isFollowUpManagerRole(
   return isJobManagerRole(role);
 }
 
+/** Mirrors analytics manager roles on the API (includes financial metrics). */
+export function isAnalyticsManagerRole(
+  role: MemberRole | null | undefined,
+): boolean {
+  return isJobManagerRole(role);
+}
+
 /** Mirrors automation manager roles on the API. */
 export function isAutomationManagerRole(
   role: MemberRole | null | undefined,
 ): boolean {
   return isJobManagerRole(role);
+}
+
+/** Mirrors audit log viewers on the API (owners and admins only). */
+export function isAuditViewerRole(
+  role: MemberRole | null | undefined,
+): boolean {
+  return role === "OWNER" || role === "ADMIN";
 }

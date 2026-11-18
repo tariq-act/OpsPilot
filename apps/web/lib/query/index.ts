@@ -88,6 +88,7 @@ export {
 
 export {
   auditLogQueries,
+  useAuditLogQuery,
   useAuditLogsQuery,
   useInvalidateAuditLogs,
 } from "@/lib/query/audit-logs";
@@ -108,6 +109,15 @@ export {
   useInvalidateFollowUps,
   useUpdateFollowUpMutation,
 } from "@/lib/query/follow-ups";
+
+export {
+  analyticsQueries,
+  useAnalyticsCustomersQuery,
+  useAnalyticsJobsQuery,
+  useAnalyticsOverviewQuery,
+  useAnalyticsRevenueQuery,
+  useAnalyticsTechniciansQuery,
+} from "@/lib/query/analytics";
 
 export {
   automationQueries,

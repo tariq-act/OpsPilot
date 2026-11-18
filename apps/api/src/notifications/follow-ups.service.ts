@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -22,6 +23,10 @@ import type {
 import type { CreateFollowUpDto } from './dto/create-follow-up.dto.js';
 import type { ListFollowUpsQueryDto } from './dto/list-follow-ups-query.dto.js';
 import type { UpdateFollowUpDto } from './dto/update-follow-up.dto.js';
+import {
+  canTransitionFollowUpStatus,
+  type FollowUpStatusName,
+} from './follow-up-status.js';
 
 const FOLLOW_UP_MANAGER_ROLES = [
   'OWNER',
@@ -175,6 +180,21 @@ export class FollowUpsService {
         message: 'Follow-up not found',
         error: 'Not Found',
       });
+    }
+
+    if (dto.status !== undefined) {
+      if (
+        !canTransitionFollowUpStatus(
+          existing.status as FollowUpStatusName,
+          dto.status as FollowUpStatusName,
+        )
+      ) {
+        throw new ConflictException({
+          statusCode: 409,
+          message: `Cannot transition follow-up from ${existing.status} to ${dto.status}`,
+          error: 'Conflict',
+        });
+      }
     }
 
     let dueAt: Date | undefined;

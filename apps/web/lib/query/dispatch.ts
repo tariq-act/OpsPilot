@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 
 import { toIsoDateEnd, toIsoDateStart } from "@/lib/dispatch-date";
+import { toUserErrorMessage } from "@/lib/query/errors";
 import { jobQueries, useJobsQuery } from "@/lib/query/jobs";
 import {
   findOverlappingJobIds,
@@ -106,13 +107,15 @@ export function useDispatchDay(
       assignedJobIds,
       isLoading: dayJobsQuery.server.isLoading || techLoading,
       isError: dayJobsQuery.server.isError || Boolean(techError),
-      errorMessage:
-        dayJobsQuery.server.error?.message ??
-        (techError?.error instanceof Error
-          ? techError.error.message
-          : techError
-            ? "Unable to load technician schedules."
-            : null),
+      errorMessage: dayJobsQuery.server.isError
+        ? (dayJobsQuery.server.error?.message ??
+          "Unable to load dispatch jobs.")
+        : techError
+          ? toUserErrorMessage(
+              techError.error,
+              "Unable to load technician schedules.",
+            )
+          : null,
       refetchAll: () => {
         void dayJobsQuery.refetch();
         for (const query of techQueries) {

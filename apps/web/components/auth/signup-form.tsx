@@ -58,13 +58,29 @@ export function SignupForm() {
     [password],
   );
 
+  const passwordValid = passwordChecks.every((check) => check.met);
   const confirmError =
     confirmPassword.length > 0 && confirmPassword !== password
       ? "Passwords do not match"
       : undefined;
+  const canSubmit =
+    name.trim().length > 0 &&
+    email.trim().length > 0 &&
+    passwordValid &&
+    confirmPassword.length > 0 &&
+    !confirmError &&
+    !loading;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!passwordValid) {
+      setError("Password does not meet the requirements.");
+      return;
+    }
+    if (!confirmPassword) {
+      setError("Confirm your password.");
+      return;
+    }
     if (confirmError) return;
 
     setError(null);
@@ -227,7 +243,7 @@ export function SignupForm() {
             type="submit"
             size="lg"
             className="h-11 w-full rounded-xl"
-            disabled={loading || Boolean(confirmError)}
+            disabled={!canSubmit}
           >
             {loading ? "Creating account…" : "Create account"}
             {!loading && <LuArrowRight data-icon="inline-end" />}

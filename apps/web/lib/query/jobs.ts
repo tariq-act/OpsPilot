@@ -452,6 +452,19 @@ export function useCompleteJobMutation(organizationId: string) {
       cacheJob(queryClient, organizationId, data);
       await invalidateJobViews(queryClient, organizationId, data.job.id);
       await invalidateJobExecution(queryClient, organizationId, data.job.id);
+      // Completion may create follow-ups/notifications and change analytics.
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.followUps.all(organizationId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.notifications.all(organizationId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.analytics.all(organizationId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.auditLogs.all(organizationId),
+      });
     },
   });
 }
