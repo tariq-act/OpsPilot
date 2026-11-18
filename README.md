@@ -4,9 +4,8 @@ OpsPilot is an operations-focused copilot. This repository is a
 [Bun](https://bun.sh/) + [Turborepo](https://turborepo.dev/) monorepo with a
 Next.js web app and a NestJS API.
 
-The current codebase is the engineering foundation: health checks, Prisma
-against hosted Supabase PostgreSQL, and a starter web UI. Product workflows
-are not implemented yet.
+The API uses Drizzle ORM with PostgreSQL. You can run PostgreSQL locally
+with Docker Compose or connect the API to a hosted database.
 
 Architecture detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -36,24 +35,29 @@ node --version     # v24.x or later
 bun --version      # 1.3.13
 ```
 
-PostgreSQL is hosted **Supabase**. Only the NestJS API connects to it. You do
-not need a local PostgreSQL install or Docker to develop against the current
-default. Docker Compose (`compose.yaml`) exists in the repo as an optional
-local database later; it is not required now.
+For the local database, install and start Docker Desktop (or a Docker Engine
+with Docker Compose). Only the NestJS API connects to PostgreSQL.
+`compose.yaml` runs PostgreSQL 16 at `127.0.0.1:5433` with persistent storage.
+You can also use a hosted PostgreSQL database by setting the API connection URL.
 
 ## Getting started
 
-From the repository root:
+For a fresh checkout, from the repository root (keep existing environment files):
 
 ```sh
 bun install
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env.local
+bun run db:up
+bun run --filter=api db:migrate
 bun run dev
 ```
 
-Put Supabase database values in `apps/api/.env` (see [Environment](#environment)
-and [Database](#database)). Do not commit `.env` or `.env.local`.
+Set `BETTER_AUTH_SECRET` in `apps/api/.env` before starting the API. You can
+generate one with `openssl rand -base64 32`. The API example already contains
+the local database URL. If an existing API environment file points to a hosted
+database, follow [Database](#database) to select the local connection before
+running migrations. Do not commit `.env` or `.env.local`.
 
 - API: [http://localhost:3000](http://localhost:3000)
 - Web: [http://localhost:3001](http://localhost:3001)
@@ -67,8 +71,9 @@ The API loads `apps/api/.env` at process start when that file exists
 (`process.loadEnvFile`). Existing process environment variables are not
 overridden.
 
-The API and its unit/E2E tests start without PostgreSQL. `GET /health/ready`
-returns `503` when the database is unreachable or `DATABASE_*` is incomplete.
+The API requires `DATABASE_URL`. `GET /health/ready` returns `503` when that
+database is unreachable. The search tests use an isolated database and do not
+connect to your development database.
 
 Run a single app:
 
@@ -85,7 +90,8 @@ copies. Never put real secrets in examples or in git.
 
 | File                    | Purpose                                     | Git       |
 | ----------------------- | ------------------------------------------- | --------- |
-| `.env.example`          | Workspace notes (comments only)             | committed |
+| `.env.example`          | Local Docker Compose defaults               | committed |
+| `.env`                  | Optional local Docker Compose overrides     | ignored   |
 | `apps/api/.env.example` | NestJS server variables                     | committed |
 | `apps/web/.env.example` | Next.js variables                           | committed |
 | `apps/api/.env`         | Local API secrets / overrides               | ignored   |
@@ -102,87 +108,97 @@ copies. Never put real secrets in examples or in git.
 
 **Variables from the example files**
 
-Required/optional below is based on `.env.example` plus whether application
-source currently reads the name.
+| Variable              | Used by             | Purpose                                                                    |
+| --------------------- | ------------------- | -------------------------------------------------------------------------- |
+| `POSTGRES_DB`         | Docker Compose      | Database name, default `opspilot`                                          |
+| `POSTGRES_USER`       | Docker Compose      | Local database user, default `opspilot`                                    |
+| `POSTGRES_PASSWORD`   | Docker Compose      | Local development password, default `opspilot`                             |
+| `POSTGRES_PORT`       | Docker Compose      | Host port, default `5433`                                                  |
+| `DATABASE_URL`        | API and Drizzle CLI | PostgreSQL connection URL, required                                        |
+| `PORT`                | API                 | HTTP port, default `3000`                                                  |
+| `BETTER_AUTH_SECRET`  | API                 | Private authentication secret                                              |
+| `BETTER_AUTH_URL`     | API                 | API origin serving authentication, default example `http://localhost:3000` |
+| `WEB_ORIGIN`          | API                 | Browser origin allowed to call the API with credentials                    |
+| `NEXT_PUBLIC_API_URL` | Web                 | API origin, default `http://localhost:3000`                                |
 
-| Variable              | App                  | Required                               | Read by the app today                                           | Purpose                                                       |
-| --------------------- | -------------------- | -------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------- |
-| `PORT`                | `apps/api`           | Optional                               | Yes (`main.ts`). Default `3000`                                 | HTTP listen port                                              |
-| `NODE_ENV`            | examples (commented) | Optional                               | Not read by OpsPilot source; listed in `turbo.json` `globalEnv` | Runtime/build environment                                     |
-| `DATABASE_URL`        | `apps/api`           | For Prisma when not using `DATABASE_*` | Yes (Prisma URL resolution)                                     | PostgreSQL URL for Prisma CLI and the ORM                     |
-| `DATABASE_HOST`       | `apps/api`           | For `/health/ready`                    | Yes (`DatabaseService`)                                         | PostgreSQL host                                               |
-| `DATABASE_PORT`       | `apps/api`           | For `/health/ready`                    | Yes                                                             | PostgreSQL port (often `5432`)                                |
-| `DATABASE_NAME`       | `apps/api`           | For `/health/ready`                    | Yes                                                             | Database name                                                 |
-| `DATABASE_USER`       | `apps/api`           | For `/health/ready`                    | Yes                                                             | Database role                                                 |
-| `DATABASE_PASSWORD`   | `apps/api`           | For `/health/ready`                    | Yes                                                             | Database password                                             |
-| `DATABASE_SSL`        | `apps/api`           | Recommended for Supabase               | Yes (`true` / `1` / `require`)                                  | TLS for `pg` / URL `sslmode=require`                          |
-| `SUPABASE_URL`        | `apps/api`           | Optional                               | **No**                                                          | Documented in `.env.example` only                             |
-| `SUPABASE_ANON_KEY`   | `apps/api`           | Optional                               | **No**                                                          | Documented in `.env.example` only                             |
-| `NEXT_PUBLIC_API_URL` | `apps/web`           | Optional                               | **No**                                                          | Example API origin for when the client starts calling the API |
-
-`DATABASE_*` and `DATABASE_URL` belong only in `apps/api`. Never add them to
-`apps/web`.
-
-When `DATABASE_URL` is unset or empty, Prisma builds a URL from `DATABASE_*`.
-`/health/ready` still uses the discrete `DATABASE_*` variables only; setting
-`DATABASE_URL` alone does not configure that health check.
-
-Root `.env.example` also comments optional Compose variables (`POSTGRES_DB`,
-`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`) for `compose.yaml`.
-Those are not API connection settings.
+`POSTGRES_*` values belong in the optional root `.env`. Application values
+belong in the app environment files. Drizzle and the readiness endpoint both
+use `DATABASE_URL`; separate `DATABASE_HOST`, `DATABASE_SSL`, and similar
+variables are not read by the current API. Keep the URL in sync with any
+Compose overrides. URL encode special characters in credentials.
 
 **Secrets**
 
 - Never commit `.env`, `.env.local`, `.env.*.local`, passwords, or API keys.
 - Never expose secrets through `NEXT_PUBLIC_*`.
-- Keep database and Supabase values in `apps/api` only.
+- Keep application database URLs and hosted credentials in `apps/api` only.
 - If a secret is committed by mistake, rotate it.
 
 ## Database
 
-The NestJS API uses [Prisma](https://www.prisma.io/) against **hosted Supabase
-PostgreSQL**. Next.js must not connect to PostgreSQL or Supabase.
+The API uses [Drizzle ORM](https://orm.drizzle.team/) with PostgreSQL.
+Next.js calls the API and does not connect to PostgreSQL directly.
 
-1. In the Supabase dashboard, open **Settings → Database**.
-2. Copy host, port, database name, user, and password. Prefer a **direct** or
-   **session-mode** connection for this long-lived Nest process.
-3. Put those values in `apps/api/.env` as `DATABASE_HOST`, `DATABASE_PORT`,
-   `DATABASE_NAME`, `DATABASE_USER`, and `DATABASE_PASSWORD`, or set
-   `DATABASE_URL` (see `apps/api/.env.example` for the URL shape).
-4. Set `DATABASE_SSL=true`.
-5. Never commit credentials.
-
-| Path                             | Purpose                                              |
-| -------------------------------- | ---------------------------------------------------- |
-| `apps/api/prisma/schema.prisma`  | Prisma schema (no product tables yet)                |
-| `apps/api/prisma/migrations/`    | Committed SQL migrations                             |
-| `apps/api/prisma.config.ts`      | Prisma CLI configuration                             |
-| `apps/api/src/generated/prisma/` | Generated client (gitignored; run `prisma:generate`) |
-
-From `apps/api` (or `bun run --filter=api <script>` from the root):
+### Local Docker database
 
 ```sh
-bun run prisma:generate          # generate Prisma Client (also runs before build / check-types)
-bun run prisma:migrate           # create and apply a development migration
-bun run prisma:migrate:deploy    # apply pending migrations
-bun run prisma:migrate:status    # compare migration history to the database
+bun run db:up       # start PostgreSQL and wait up to 60 seconds for health
+bun run db:status   # inspect container health and published port
+bun run db:logs     # follow PostgreSQL logs
+bun run db:shell    # open psql in the container
+bun run db:down     # stop the container, retaining database data
 ```
 
-To reproduce the schema on a clean database, apply committed migrations with
-`prisma:migrate:deploy`. Do **not** run `prisma migrate reset` against the
-shared Supabase development database.
+The default connection for `apps/api/.env` is:
 
-After `bun run dev --filter=api`:
+```dotenv
+DATABASE_URL=postgresql://opspilot:opspilot@127.0.0.1:5433/opspilot
+```
 
-- [http://localhost:3000/health](http://localhost:3000/health) — liveness
-  (`{"status":"ok"}`)
-- [http://localhost:3000/health/ready](http://localhost:3000/health/ready) —
-  `200` when `SELECT 1` succeeds, `503` otherwise
+Port `5433` avoids conflicting with a PostgreSQL installation using `5432`.
+The container listens on `5432` internally and publishes only to `127.0.0.1`.
+Local PostgreSQL does not require SSL. To customize the database name, user,
+password, or host port, copy `.env.example` to a root `.env` and update both
+the `POSTGRES_*` values and the API URL.
 
-Full Prisma workflow: [apps/api/docs/PRISMA.md](apps/api/docs/PRISMA.md).
+Apply the committed migrations to the local database from the repository root:
 
-`compose.yaml` and `bun run db:up` / `db:down` / `db:status` wrap an optional
-local PostgreSQL 16 container. That is not the current default workflow.
+```sh
+DATABASE_URL=postgresql://opspilot:opspilot@127.0.0.1:5433/opspilot bun run --filter=api db:migrate
+```
+
+This explicit URL selects the local database even if `apps/api/.env` still
+contains a hosted connection. Use your customized URL if you changed the
+Compose defaults. To make the running API use this database too, set its
+`DATABASE_URL` in `apps/api/.env` and restart the API.
+
+| Path                          | Purpose                                                |
+| ----------------------------- | ------------------------------------------------------ |
+| `compose.yaml`                | PostgreSQL service, health check and persistent volume |
+| `apps/api/drizzle.config.ts`  | Drizzle CLI configuration                              |
+| `apps/api/src/db/schema/`     | TypeScript database schema                             |
+| `apps/api/src/db/migrations/` | Committed SQL migrations                               |
+| `apps/api/src/db/index.ts`    | API database connection                                |
+
+Data persists in the `opspilot_postgres_data` volume across restarts and
+`db:down`. Changing `POSTGRES_USER`, `POSTGRES_PASSWORD`, or `POSTGRES_DB`
+does not change an already initialized database. Avoid `docker compose down -v`
+unless you intend to delete the local database. Migrations are explicit and
+are not run automatically by container startup.
+
+### Hosted PostgreSQL
+
+You can keep using a hosted database such as Supabase by setting its private
+connection URL in `apps/api/.env`. Prefer a direct or session mode connection
+for the API and enable SSL when required by the provider. Docker is only
+needed for the local database. Never commit hosted credentials.
+
+### Readiness
+
+After starting the API, [http://localhost:3000/health/ready](http://localhost:3000/health/ready)
+returns `200` when `SELECT 1` succeeds, or `503` when the configured database
+is unavailable. [http://localhost:3000/health](http://localhost:3000/health)
+checks process liveness.
 
 ## Quality checks
 
@@ -190,7 +206,7 @@ From the repository root:
 
 ```sh
 bun run lint          # turbo: oxlint (api), ESLint (web, ui)
-bun run check-types   # turbo: TypeScript checks (api generates Prisma Client first)
+bun run check-types   # turbo: TypeScript checks
 bun run format        # Prettier write
 bun run format:check  # Prettier check
 bun run build         # turbo: production build
@@ -284,8 +300,8 @@ cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env.local
 ```
 
-The apps start without these files today. Copy them so local overrides have a
-place to live. Never commit the copied files.
+The API needs a database URL and authentication settings. Keep existing
+environment files when copying examples. Never commit the copied files.
 
 ### Dependency installation problems
 
@@ -307,8 +323,9 @@ place to live. Never commit the copied files.
 
 `/health/ready` returns `503` with
 `{"status":"not_ready","database":"unavailable"}`. Confirm `apps/api/.env`
-has Supabase `DATABASE_*` values and `DATABASE_SSL=true`. Do not commit those
-values.
+contains the intended `DATABASE_URL`. For the local database, run
+`bun run db:up`, check `bun run db:status`, and confirm the URL uses the
+published port (default `5433`). Do not commit private connection values.
 
 ## Related documentation
 

@@ -4,6 +4,29 @@
  */
 
 // ---------------------------------------------------------------------------
+// Global search
+// ---------------------------------------------------------------------------
+
+export type SearchEntityType =
+  "customers" | "serviceRequests" | "jobs" | "technicians" | "invoices";
+export interface SearchResult {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+}
+export interface SearchGroup {
+  type: SearchEntityType;
+  results: SearchResult[];
+  hasMore: boolean;
+}
+export interface SearchResponse {
+  query: string;
+  limitPerGroup: number;
+  groups: SearchGroup[];
+}
+
+// ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
 

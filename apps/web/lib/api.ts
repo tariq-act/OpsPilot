@@ -46,6 +46,7 @@ export class ApiError extends Error {
 type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
 interface RequestOptions {
+  signal?: AbortSignal;
   method?: HttpMethod;
   body?: unknown;
   /** Extra headers merged with the defaults. */
@@ -56,7 +57,13 @@ interface RequestOptions {
 
 async function request<T>(
   path: string,
-  { method = "GET", body, headers: extraHeaders, next }: RequestOptions = {},
+  {
+    method = "GET",
+    body,
+    headers: extraHeaders,
+    next,
+    signal,
+  }: RequestOptions = {},
 ): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
 
@@ -82,6 +89,7 @@ async function request<T>(
           ? (body as FormData)
           : JSON.stringify(body),
     credentials: "include",
+    signal,
     next,
   });
 
@@ -109,7 +117,11 @@ async function request<T>(
 
 async function requestBlob(
   path: string,
-  { headers: extraHeaders, next }: Omit<RequestOptions, "method" | "body"> = {},
+  {
+    headers: extraHeaders,
+    next,
+    signal,
+  }: Omit<RequestOptions, "method" | "body"> = {},
 ): Promise<Blob> {
   const url = `${API_BASE_URL}${path}`;
   const response = await fetch(url, {
@@ -120,6 +132,7 @@ async function requestBlob(
     },
     credentials: "include",
     next,
+    signal,
   });
 
   if (!response.ok) {

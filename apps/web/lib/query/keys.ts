@@ -6,6 +6,14 @@
  */
 
 export const queryKeys = {
+  search: {
+    results: (
+      organizationId: string,
+      membershipId: string,
+      role: string,
+      query: string,
+    ) => ["search", organizationId, membershipId, role, query] as const,
+  },
   organizations: {
     all: ["organizations"] as const,
     lists: () => [...queryKeys.organizations.all, "list"] as const,

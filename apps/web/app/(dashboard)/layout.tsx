@@ -6,6 +6,7 @@ import { OrgProvider } from "@/components/providers/org-provider";
 import { OrgGuard } from "@/components/providers/org-guard";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { NotificationsHeaderLink } from "@/components/notifications/notifications-header-link";
+import { GlobalSearch } from "@/components/search/global-search";
 import type { MemberRole } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
@@ -84,7 +85,8 @@ function DashboardShell({
     <div className="flex min-h-screen bg-background">
       <DashboardSidebar role={session.role} />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 shrink-0 items-center justify-end border-b border-border bg-background px-4 sm:px-6">
+        <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-4 sm:px-6">
+          <GlobalSearch />
           <NotificationsHeaderLink />
         </header>
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
