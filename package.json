@@ -13,9 +13,11 @@
     "check-types": "turbo run check-types",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
-    "db:up": "docker compose up -d",
+    "db:up": "docker compose up -d --wait --wait-timeout 60 postgres",
     "db:down": "docker compose down",
-    "db:status": "docker compose ps"
+    "db:status": "docker compose ps",
+    "db:logs": "docker compose logs --follow postgres",
+    "db:shell": "docker compose exec postgres sh -c 'exec psql -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\"'"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

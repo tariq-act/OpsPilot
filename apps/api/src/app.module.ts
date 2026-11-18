@@ -15,6 +15,7 @@ import { JobsModule } from './jobs/jobs.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { ServiceRequestsModule } from './service-requests/service-requests.module.js';
+import { SearchModule } from './search/search.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { TechniciansModule } from './technicians/technicians.module.js';
 
@@ -28,6 +29,7 @@ import { TechniciansModule } from './technicians/technicians.module.js';
     OrganizationsModule,
     CustomersModule,
     ServiceRequestsModule,
+    SearchModule,
     JobsModule,
     TechniciansModule,
     InvoicesModule,
