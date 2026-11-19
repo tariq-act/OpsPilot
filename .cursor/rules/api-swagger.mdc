@@ -11,11 +11,12 @@ The OpenAPI document is generated at runtime from controllers and `*.dto.ts` cla
 When you add or change an HTTP endpoint:
 
 - Put request and response shapes in `*.dto.ts` files so the Nest Swagger compiler plugin (`apps/api/nest-cli.json`) picks them up.
+- Wrap each contiguous Swagger decorator group with `// Swagger docs START` and `// Swagger docs END`. End the block before runtime decorators, field declarations, or handler code. Keep explicit boundaries around shared Swagger helpers and documentation setup too.
 - Keep request rules on class-validator decorators. The plugin copies those into the schema.
 - Set the controller method return type to the response DTO.
 - Add `@ApiOperation` and `@Api*Response` for each error the handler actually throws.
 - Use `@HttpCode` when the success status is not 200, and document that status with `@ApiCreatedResponse` or the matching decorator.
-- Protected routes use `@ApiSession()` (`better-auth.session_token`). Public routes use `@AllowAnonymous()` and must not require the cookie.
+- Protected routes document their cookie with `@ApiSession()` (`better-auth.session_token`); the Better Auth guard enforces authentication. Public routes use `@AllowAnonymous()` and must not require the cookie.
 - Leave Better Auth’s `/api/auth/*` routes out of this document.
 
 After the change, build the API with `nest build` and confirm the route, request schema, response schema, and error statuses appear in `/docs`.
