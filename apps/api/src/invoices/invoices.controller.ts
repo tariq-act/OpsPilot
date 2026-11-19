@@ -33,6 +33,7 @@ import { ListInvoicesQueryDto } from './dto/list-invoices-query.dto.js';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto.js';
 import { InvoicesService } from './invoices.service.js';
 
+// Swagger docs START
 @ApiTags('Invoices')
 @ApiSession()
 @ApiHeader({
@@ -41,12 +42,14 @@ import { InvoicesService } from './invoices.service.js';
     'Active organization context. Must match an organization the signed-in user belongs to. Never sent in the request body.',
   required: true,
 })
+// Swagger docs END
 @Controller('invoices')
 export class InvoicesController {
   constructor(private readonly invoicesService: InvoicesService) {}
 
   @Post()
   @HttpCode(201)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Create an invoice',
     description:
@@ -58,6 +61,7 @@ export class InvoicesController {
   @ApiNotFoundResponse({ type: ApiErrorDto })
   @ApiConflictResponse({ type: ApiErrorDto })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async create(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -71,6 +75,7 @@ export class InvoicesController {
   }
 
   @Get()
+  // Swagger docs START
   @ApiOperation({
     summary: 'List invoices',
     description:
@@ -79,6 +84,7 @@ export class InvoicesController {
   @ApiOkResponse({ type: InvoiceListResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async list(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -92,11 +98,13 @@ export class InvoicesController {
   }
 
   @Get(':id')
+  // Swagger docs START
   @ApiOperation({ summary: 'Get an invoice by id' })
   @ApiOkResponse({ type: InvoiceResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async getById(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -110,6 +118,7 @@ export class InvoicesController {
   }
 
   @Patch(':id')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Update a draft invoice',
     description:
@@ -121,6 +130,7 @@ export class InvoicesController {
   @ApiNotFoundResponse({ type: ApiErrorDto })
   @ApiConflictResponse({ type: ApiErrorDto })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async update(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -137,6 +147,7 @@ export class InvoicesController {
 
   @Post(':id/send')
   @HttpCode(200)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Send an invoice',
     description:
@@ -147,6 +158,7 @@ export class InvoicesController {
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
   @ApiConflictResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async send(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -157,6 +169,7 @@ export class InvoicesController {
 
   @Post(':id/void')
   @HttpCode(200)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Void an invoice',
     description:
@@ -166,6 +179,7 @@ export class InvoicesController {
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
   @ApiConflictResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async void(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,

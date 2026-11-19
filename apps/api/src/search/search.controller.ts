@@ -15,6 +15,7 @@ import { SearchQueryDto } from './dto/search-query.dto.js';
 import { SearchResponseDto } from './dto/search-response.dto.js';
 import { SearchService } from './search.service.js';
 
+// Swagger docs START
 @ApiTags('Search')
 @ApiSession()
 @ApiHeader({
@@ -23,12 +24,14 @@ import { SearchService } from './search.service.js';
   description:
     'Active organization. The signed in user must be an active member.',
 })
+// Swagger docs END
 @Controller('search')
 export class SearchController {
   constructor(private readonly searchService: SearchService) {}
 
   @Get()
   @Header('Cache-Control', 'no-store')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Search accessible organization records',
     description:
@@ -37,6 +40,7 @@ export class SearchController {
   @ApiOkResponse({ type: SearchResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
+  // Swagger docs END
   search(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,

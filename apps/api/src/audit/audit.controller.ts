@@ -19,6 +19,7 @@ import {
 } from './dto/audit-log-response.dto.js';
 import { ListAuditLogsQueryDto } from './dto/list-audit-logs-query.dto.js';
 
+// Swagger docs START
 @ApiTags('Audit Logs')
 @ApiSession()
 @ApiHeader({
@@ -27,11 +28,13 @@ import { ListAuditLogsQueryDto } from './dto/list-audit-logs-query.dto.js';
     'Active organization context. Must match an organization the signed-in user belongs to. Never sent in the request body.',
   required: true,
 })
+// Swagger docs END
 @Controller('audit-logs')
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
   @Get()
+  // Swagger docs START
   @ApiOperation({
     summary: 'List organization audit logs',
     description:
@@ -40,6 +43,7 @@ export class AuditController {
   @ApiOkResponse({ type: AuditLogListResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async list(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -49,6 +53,7 @@ export class AuditController {
   }
 
   @Get(':id')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Get an audit log entry',
     description:
@@ -57,6 +62,7 @@ export class AuditController {
   @ApiOkResponse({ type: AuditLogResponseDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async getById(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,

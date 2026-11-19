@@ -31,6 +31,7 @@ import {
 import { UpdateCustomerDto } from './dto/update-customer.dto.js';
 import { OrganizationId } from '../common/organization-id.decorator.js';
 
+// Swagger docs START
 @ApiTags('Customers')
 @ApiSession()
 @ApiHeader({
@@ -39,12 +40,14 @@ import { OrganizationId } from '../common/organization-id.decorator.js';
     'Active organization context. Must match an organization the signed-in user belongs to. Never sent in the request body.',
   required: true,
 })
+// Swagger docs END
 @Controller('customers')
 export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
   @Post()
   @HttpCode(201)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Create a customer',
     description:
@@ -54,6 +57,7 @@ export class CustomersController {
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async create(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -67,6 +71,7 @@ export class CustomersController {
   }
 
   @Get()
+  // Swagger docs START
   @ApiOperation({
     summary: 'List customers',
     description:
@@ -75,6 +80,7 @@ export class CustomersController {
   @ApiOkResponse({ type: CustomerListResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async list(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -83,11 +89,13 @@ export class CustomersController {
   }
 
   @Get(':id')
+  // Swagger docs START
   @ApiOperation({ summary: 'Get a customer by id' })
   @ApiOkResponse({ type: CustomerResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async getById(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -97,6 +105,7 @@ export class CustomersController {
   }
 
   @Patch(':id')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Update a customer',
     description: 'Owners, admins, and dispatchers can update customers.',
@@ -105,6 +114,7 @@ export class CustomersController {
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async update(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -120,6 +130,7 @@ export class CustomersController {
   }
 
   @Delete(':id')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Deactivate a customer',
     description:
@@ -129,6 +140,7 @@ export class CustomersController {
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async softDelete(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,

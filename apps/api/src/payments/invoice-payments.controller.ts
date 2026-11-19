@@ -22,6 +22,7 @@ import {
 } from './dto/payment-response.dto.js';
 import { PaymentsService } from './payments.service.js';
 
+// Swagger docs START
 @ApiTags('Payments')
 @ApiSession()
 @ApiHeader({
@@ -30,12 +31,14 @@ import { PaymentsService } from './payments.service.js';
     'Active organization context. Must match an organization the signed-in user belongs to. Never sent in the request body.',
   required: true,
 })
+// Swagger docs END
 @Controller('invoices/:invoiceId/payments')
 export class InvoicePaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post()
   @HttpCode(201)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Record a payment on an invoice',
     description:
@@ -47,6 +50,7 @@ export class InvoicePaymentsController {
   @ApiNotFoundResponse({ type: ApiErrorDto })
   @ApiConflictResponse({ type: ApiErrorDto })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async create(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -62,12 +66,14 @@ export class InvoicePaymentsController {
   }
 
   @Get()
+  // Swagger docs START
   @ApiOperation({
     summary: 'List payments for an invoice',
   })
   @ApiOkResponse({ type: PaymentListResponseDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async list(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,

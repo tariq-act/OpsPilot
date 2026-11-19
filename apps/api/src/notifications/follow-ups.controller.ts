@@ -31,6 +31,7 @@ import { ListFollowUpsQueryDto } from './dto/list-follow-ups-query.dto.js';
 import { UpdateFollowUpDto } from './dto/update-follow-up.dto.js';
 import { FollowUpsService } from './follow-ups.service.js';
 
+// Swagger docs START
 @ApiTags('Follow-ups')
 @ApiSession()
 @ApiHeader({
@@ -39,12 +40,14 @@ import { FollowUpsService } from './follow-ups.service.js';
     'Active organization context. Must match an organization the signed-in user belongs to. Never sent in the request body.',
   required: true,
 })
+// Swagger docs END
 @Controller('follow-ups')
 export class FollowUpsController {
   constructor(private readonly followUpsService: FollowUpsService) {}
 
   @Post()
   @HttpCode(201)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Create a customer follow-up',
     description:
@@ -54,6 +57,7 @@ export class FollowUpsController {
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async create(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -67,9 +71,11 @@ export class FollowUpsController {
   }
 
   @Get()
+  // Swagger docs START
   @ApiOperation({ summary: 'List follow-ups' })
   @ApiOkResponse({ type: FollowUpListResponseDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async list(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -83,10 +89,12 @@ export class FollowUpsController {
   }
 
   @Get(':id')
+  // Swagger docs START
   @ApiOperation({ summary: 'Get a follow-up by id' })
   @ApiOkResponse({ type: FollowUpResponseDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async getById(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -100,11 +108,13 @@ export class FollowUpsController {
   }
 
   @Patch(':id')
+  // Swagger docs START
   @ApiOperation({ summary: 'Update a follow-up' })
   @ApiOkResponse({ type: FollowUpResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async update(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,

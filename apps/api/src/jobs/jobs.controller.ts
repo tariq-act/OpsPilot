@@ -69,6 +69,7 @@ import { UpdateProgressDto } from './dto/update-progress.dto.js';
 import { UploadJobPhotoDto } from './dto/upload-job-photo.dto.js';
 import { JobsService } from './jobs.service.js';
 
+// Swagger docs START
 @ApiTags('Jobs')
 @ApiSession()
 @ApiHeader({
@@ -77,12 +78,14 @@ import { JobsService } from './jobs.service.js';
     'Active organization context. Must match an organization the signed-in user belongs to. Never sent in the request body.',
   required: true,
 })
+// Swagger docs END
 @Controller('jobs')
 export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
   @Post()
   @HttpCode(201)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Create a job',
     description:
@@ -96,6 +99,7 @@ export class JobsController {
     type: ApiErrorDto,
   })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async create(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -105,6 +109,7 @@ export class JobsController {
   }
 
   @Get()
+  // Swagger docs START
   @ApiOperation({
     summary: 'List jobs',
     description:
@@ -113,6 +118,7 @@ export class JobsController {
   @ApiOkResponse({ type: JobListResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async list(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -122,6 +128,7 @@ export class JobsController {
   }
 
   @Get(':id/assignments')
+  // Swagger docs START
   @ApiOperation({
     summary: 'List assignments for a job',
     description:
@@ -130,6 +137,7 @@ export class JobsController {
   @ApiOkResponse({ type: JobAssignmentListResponseDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async listAssignments(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -143,6 +151,7 @@ export class JobsController {
   }
 
   @Get(':id/execution')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Get job execution details',
     description:
@@ -151,6 +160,7 @@ export class JobsController {
   @ApiOkResponse({ type: JobExecutionResponseDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async getExecution(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -160,10 +170,12 @@ export class JobsController {
   }
 
   @Get(':id/notes')
+  // Swagger docs START
   @ApiOperation({ summary: 'List work notes for a job' })
   @ApiOkResponse({ type: JobNoteListResponseDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async listNotes(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -173,10 +185,12 @@ export class JobsController {
   }
 
   @Get(':id/photos')
+  // Swagger docs START
   @ApiOperation({ summary: 'List photos for a job' })
   @ApiOkResponse({ type: JobPhotoListResponseDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async listPhotos(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -186,10 +200,12 @@ export class JobsController {
   }
 
   @Get(':id/photos/:photoId/content')
+  // Swagger docs START
   @ApiOperation({ summary: 'Download a job photo' })
   @ApiOkResponse({ description: 'Binary image content' })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async getPhotoContent(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -212,10 +228,12 @@ export class JobsController {
   }
 
   @Get(':id/activity')
+  // Swagger docs START
   @ApiOperation({ summary: 'List job execution activity' })
   @ApiOkResponse({ type: JobActivityListResponseDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async listActivities(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -225,11 +243,13 @@ export class JobsController {
   }
 
   @Get(':id')
+  // Swagger docs START
   @ApiOperation({ summary: 'Get a job by id' })
   @ApiOkResponse({ type: JobResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async getById(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -239,6 +259,7 @@ export class JobsController {
   }
 
   @Post(':id/schedule')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Schedule a job',
     description:
@@ -252,6 +273,7 @@ export class JobsController {
     description: 'Job cannot be scheduled from its current status',
     type: ApiErrorDto,
   })
+  // Swagger docs END
   async schedule(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -267,6 +289,7 @@ export class JobsController {
   }
 
   @Put(':id/schedule')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Reschedule a job',
     description:
@@ -280,6 +303,7 @@ export class JobsController {
     description: 'Job cannot be rescheduled from its current status',
     type: ApiErrorDto,
   })
+  // Swagger docs END
   async reschedule(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -296,6 +320,7 @@ export class JobsController {
 
   @Post(':id/assignments')
   @HttpCode(201)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Assign technicians to a job',
     description:
@@ -310,6 +335,7 @@ export class JobsController {
     type: ApiErrorDto,
   })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async assignTechnicians(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -325,6 +351,7 @@ export class JobsController {
   }
 
   @Post(':id/assignments/:assignmentId/reassign')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Reassign a technician',
     description:
@@ -336,6 +363,7 @@ export class JobsController {
   @ApiNotFoundResponse({ type: ApiErrorDto })
   @ApiConflictResponse({ type: ApiErrorDto })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async reassignTechnician(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -353,6 +381,7 @@ export class JobsController {
   }
 
   @Patch(':id/assignments/:assignmentId')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Update assignment status',
     description:
@@ -366,6 +395,7 @@ export class JobsController {
     description: 'Invalid assignment status transition',
     type: ApiErrorDto,
   })
+  // Swagger docs END
   async updateAssignment(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -383,6 +413,7 @@ export class JobsController {
   }
 
   @Post(':id/progress')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Update job execution progress',
     description:
@@ -396,6 +427,7 @@ export class JobsController {
     description: 'Invalid status transition',
     type: ApiErrorDto,
   })
+  // Swagger docs END
   async updateProgress(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -411,6 +443,7 @@ export class JobsController {
   }
 
   @Post(':id/complete')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Complete a job',
     description:
@@ -424,6 +457,7 @@ export class JobsController {
     description: 'Job cannot be completed from its current status',
     type: ApiErrorDto,
   })
+  // Swagger docs END
   async completeJob(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -440,11 +474,13 @@ export class JobsController {
 
   @Post(':id/notes')
   @HttpCode(201)
+  // Swagger docs START
   @ApiOperation({ summary: 'Add a work note' })
   @ApiCreatedResponse({ type: JobNoteResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async addNote(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -456,6 +492,7 @@ export class JobsController {
 
   @Post(':id/photos')
   @HttpCode(201)
+  // Swagger docs START
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -467,12 +504,14 @@ export class JobsController {
       },
     },
   })
+  // Swagger docs END
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
       limits: { fileSize: 10 * 1024 * 1024 },
     }),
   )
+  // Swagger docs START
   @ApiOperation({
     summary: 'Upload a before/after photo',
     description:
@@ -483,6 +522,7 @@ export class JobsController {
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async uploadPhoto(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -500,6 +540,7 @@ export class JobsController {
   }
 
   @Patch(':id')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Update a job',
     description:
@@ -513,6 +554,7 @@ export class JobsController {
     description: 'Invalid status transition',
     type: ApiErrorDto,
   })
+  // Swagger docs END
   async update(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -528,6 +570,7 @@ export class JobsController {
   }
 
   @Delete(':id')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Cancel a job',
     description:
@@ -541,6 +584,7 @@ export class JobsController {
     description: 'Job cannot be cancelled from its current status',
     type: ApiErrorDto,
   })
+  // Swagger docs END
   async softCancel(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,

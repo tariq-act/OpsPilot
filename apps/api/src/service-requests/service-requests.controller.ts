@@ -34,6 +34,7 @@ import {
 import { UpdateServiceRequestDto } from './dto/update-service-request.dto.js';
 import { ServiceRequestsService } from './service-requests.service.js';
 
+// Swagger docs START
 @ApiTags('Service Requests')
 @ApiSession()
 @ApiHeader({
@@ -42,6 +43,7 @@ import { ServiceRequestsService } from './service-requests.service.js';
     'Active organization context. Must match an organization the signed-in user belongs to. Never sent in the request body.',
   required: true,
 })
+// Swagger docs END
 @Controller('service-requests')
 export class ServiceRequestsController {
   constructor(
@@ -50,6 +52,7 @@ export class ServiceRequestsController {
 
   @Post()
   @HttpCode(201)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Create a service request',
     description:
@@ -59,6 +62,7 @@ export class ServiceRequestsController {
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async create(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -72,6 +76,7 @@ export class ServiceRequestsController {
   }
 
   @Get()
+  // Swagger docs START
   @ApiOperation({
     summary: 'List service requests',
     description:
@@ -80,6 +85,7 @@ export class ServiceRequestsController {
   @ApiOkResponse({ type: ServiceRequestListResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async list(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -93,11 +99,13 @@ export class ServiceRequestsController {
   }
 
   @Get(':id')
+  // Swagger docs START
   @ApiOperation({ summary: 'Get a service request by id' })
   @ApiOkResponse({ type: ServiceRequestResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async getById(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -111,6 +119,7 @@ export class ServiceRequestsController {
   }
 
   @Patch(':id')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Update a service request',
     description:
@@ -124,6 +133,7 @@ export class ServiceRequestsController {
     description: 'Invalid status transition',
     type: ApiErrorDto,
   })
+  // Swagger docs END
   async update(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -139,6 +149,7 @@ export class ServiceRequestsController {
   }
 
   @Delete(':id')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Cancel a service request',
     description:
@@ -152,6 +163,7 @@ export class ServiceRequestsController {
     description: 'Request cannot be cancelled from its current status',
     type: ApiErrorDto,
   })
+  // Swagger docs END
   async softCancel(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,

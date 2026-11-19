@@ -36,6 +36,7 @@ import {
 } from './dto/list-automation-query.dto.js';
 import { UpdateAutomationRuleDto } from './dto/update-automation-rule.dto.js';
 
+// Swagger docs START
 @ApiTags('Automation')
 @ApiSession()
 @ApiHeader({
@@ -44,12 +45,14 @@ import { UpdateAutomationRuleDto } from './dto/update-automation-rule.dto.js';
     'Active organization context. Must match an organization the signed-in user belongs to. Never sent in the request body.',
   required: true,
 })
+// Swagger docs END
 @Controller('automation/rules')
 export class AutomationController {
   constructor(private readonly rules: AutomationRulesService) {}
 
   @Post()
   @HttpCode(201)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Create an automation rule',
     description:
@@ -59,6 +62,7 @@ export class AutomationController {
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async create(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -68,6 +72,7 @@ export class AutomationController {
   }
 
   @Get()
+  // Swagger docs START
   @ApiOperation({
     summary: 'List automation rules',
     description:
@@ -76,6 +81,7 @@ export class AutomationController {
   @ApiOkResponse({ type: AutomationRuleListResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async list(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -85,10 +91,12 @@ export class AutomationController {
   }
 
   @Get(':id')
+  // Swagger docs START
   @ApiOperation({ summary: 'Get an automation rule' })
   @ApiOkResponse({ type: AutomationRuleResponseDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async getById(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -98,6 +106,7 @@ export class AutomationController {
   }
 
   @Patch(':id')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Update an automation rule',
     description:
@@ -108,6 +117,7 @@ export class AutomationController {
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async update(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -118,10 +128,12 @@ export class AutomationController {
   }
 
   @Post(':id/activate')
+  // Swagger docs START
   @ApiOperation({ summary: 'Activate an automation rule' })
   @ApiOkResponse({ type: AutomationRuleResponseDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async activate(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -131,10 +143,12 @@ export class AutomationController {
   }
 
   @Post(':id/deactivate')
+  // Swagger docs START
   @ApiOperation({ summary: 'Deactivate an automation rule' })
   @ApiOkResponse({ type: AutomationRuleResponseDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async deactivate(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -144,6 +158,7 @@ export class AutomationController {
   }
 
   @Get(':id/executions')
+  // Swagger docs START
   @ApiOperation({
     summary: 'List executions for an automation rule',
     description:
@@ -153,6 +168,7 @@ export class AutomationController {
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async listExecutions(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
