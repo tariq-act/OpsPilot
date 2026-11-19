@@ -19,6 +19,7 @@ import {
   NotificationResponseDto,
 } from './dto/notification-response.dto.js';
 
+// Swagger docs START
 @ApiTags('Notifications')
 @ApiSession()
 @ApiHeader({
@@ -27,6 +28,7 @@ import {
     'Active organization context. Must match an organization the signed-in user belongs to. Never sent in the request body.',
   required: true,
 })
+// Swagger docs END
 @Controller('notifications')
 export class NotificationsController {
   constructor(
@@ -34,6 +36,7 @@ export class NotificationsController {
   ) {}
 
   @Get()
+  // Swagger docs START
   @ApiOperation({
     summary: 'List customer notification history',
     description:
@@ -41,6 +44,7 @@ export class NotificationsController {
   })
   @ApiOkResponse({ type: NotificationListResponseDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async list(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -54,10 +58,12 @@ export class NotificationsController {
   }
 
   @Get(':id')
+  // Swagger docs START
   @ApiOperation({ summary: 'Get a notification by id' })
   @ApiOkResponse({ type: NotificationResponseDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async getById(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -72,6 +78,7 @@ export class NotificationsController {
 
   @Post(':id/retry')
   @HttpCode(200)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Retry a failed notification',
     description:
@@ -81,6 +88,7 @@ export class NotificationsController {
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
   @ApiConflictResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async retry(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,

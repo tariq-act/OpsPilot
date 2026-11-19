@@ -11,7 +11,10 @@ export class LoginDto {
   @MaxLength(255, { message: 'Email must be at most 255 characters' })
   email!: string;
 
+  // Swagger docs START
   @ApiProperty({ format: 'password' })
+  // Swagger docs END
+  // Runtime input validation and transformation.
   @IsString({ message: 'Password is required' })
   @MinLength(1, { message: 'Password is required' })
   @MaxLength(AUTH_PASSWORD_MAX_LENGTH, {

@@ -16,6 +16,7 @@ import { ApiSession } from '../swagger/api-session.decorator.js';
 import { PaymentResponseDto } from './dto/payment-response.dto.js';
 import { PaymentsService } from './payments.service.js';
 
+// Swagger docs START
 @ApiTags('Payments')
 @ApiSession()
 @ApiHeader({
@@ -24,15 +25,18 @@ import { PaymentsService } from './payments.service.js';
     'Active organization context. Must match an organization the signed-in user belongs to. Never sent in the request body.',
   required: true,
 })
+// Swagger docs END
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Get(':id')
+  // Swagger docs START
   @ApiOperation({ summary: 'Get a payment by id' })
   @ApiOkResponse({ type: PaymentResponseDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async getById(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -43,6 +47,7 @@ export class PaymentsController {
 
   @Post(':id/refund')
   @HttpCode(200)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Refund a succeeded payment',
     description:
@@ -53,6 +58,7 @@ export class PaymentsController {
   @ApiNotFoundResponse({ type: ApiErrorDto })
   @ApiConflictResponse({ type: ApiErrorDto })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async refund(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,

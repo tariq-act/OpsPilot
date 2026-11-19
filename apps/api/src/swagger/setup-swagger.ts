@@ -1,3 +1,8 @@
+// Swagger docs START
+/**
+ * Swagger documentation setup. Registers /docs and /docs-json.
+ * Business routes and authorization are defined outside this file.
+ */
 import type { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
@@ -64,3 +69,4 @@ export function setupSwagger(app: INestApplication): void {
     },
   });
 }
+// Swagger docs END

@@ -34,6 +34,7 @@ import {
 import { UpdateTechnicianDto } from './dto/update-technician.dto.js';
 import { TechniciansService } from './technicians.service.js';
 
+// Swagger docs START
 @ApiTags('Technicians')
 @ApiSession()
 @ApiHeader({
@@ -42,12 +43,14 @@ import { TechniciansService } from './technicians.service.js';
     'Active organization context. Must match an organization the signed-in user belongs to. Never sent in the request body.',
   required: true,
 })
+// Swagger docs END
 @Controller('technicians')
 export class TechniciansController {
   constructor(private readonly techniciansService: TechniciansService) {}
 
   @Post()
   @HttpCode(201)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Create a technician profile',
     description:
@@ -62,6 +65,7 @@ export class TechniciansController {
     type: ApiErrorDto,
   })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async create(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -75,6 +79,7 @@ export class TechniciansController {
   }
 
   @Get()
+  // Swagger docs START
   @ApiOperation({
     summary: 'List technicians',
     description:
@@ -83,6 +88,7 @@ export class TechniciansController {
   @ApiOkResponse({ type: TechnicianListResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async list(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -96,11 +102,13 @@ export class TechniciansController {
   }
 
   @Get(':id')
+  // Swagger docs START
   @ApiOperation({ summary: 'Get a technician by id' })
   @ApiOkResponse({ type: TechnicianResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async getById(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -114,6 +122,7 @@ export class TechniciansController {
   }
 
   @Patch(':id')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Update a technician',
     description:
@@ -128,6 +137,7 @@ export class TechniciansController {
     type: ApiErrorDto,
   })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async update(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -143,6 +153,7 @@ export class TechniciansController {
   }
 
   @Delete(':id')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Deactivate a technician',
     description:
@@ -152,6 +163,7 @@ export class TechniciansController {
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async softDelete(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,

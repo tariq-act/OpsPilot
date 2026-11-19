@@ -35,14 +35,17 @@ import {
 import { UpdateMemberDto } from './dto/update-member.dto.js';
 import { OrganizationsService } from './organizations.service.js';
 
+// Swagger docs START
 @ApiTags('Organizations')
 @ApiSession()
+// Swagger docs END
 @Controller('organizations')
 export class OrganizationsController {
   constructor(private readonly organizationsService: OrganizationsService) {}
 
   @Post()
   @HttpCode(201)
+  // Swagger docs START
   @ApiOperation({ summary: 'Create an organization' })
   @ApiCreatedResponse({ type: CreateOrganizationResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
@@ -51,6 +54,7 @@ export class OrganizationsController {
     type: ApiErrorDto,
   })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async create(
     @Session() session: UserSession,
     @Body() body: CreateOrganizationDto,
@@ -59,8 +63,10 @@ export class OrganizationsController {
   }
 
   @Get()
+  // Swagger docs START
   @ApiOperation({ summary: 'List organizations for the signed-in user' })
   @ApiOkResponse({ type: OrganizationListResponseDto })
+  // Swagger docs END
   async list(
     @Session() session: UserSession,
   ): Promise<OrganizationListResponseDto> {
@@ -69,6 +75,7 @@ export class OrganizationsController {
 
   @Post(':organizationId/invitations')
   @HttpCode(201)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Invite a teammate',
     description:
@@ -85,6 +92,7 @@ export class OrganizationsController {
     type: ApiErrorDto,
   })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async createInvitation(
     @Session() session: UserSession,
     @Param('organizationId') organizationId: string,
@@ -98,12 +106,14 @@ export class OrganizationsController {
   }
 
   @Get(':organizationId/members')
+  // Swagger docs START
   @ApiOperation({ summary: 'List organization members' })
   @ApiOkResponse({ type: MemberListResponseDto })
   @ApiForbiddenResponse({
     description: 'Caller is not an active member',
     type: ApiErrorDto,
   })
+  // Swagger docs END
   async listMembers(
     @Session() session: UserSession,
     @Param('organizationId') organizationId: string,
@@ -115,6 +125,7 @@ export class OrganizationsController {
   }
 
   @Patch(':organizationId/members/:memberId')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Update a member role or status',
     description:
@@ -124,6 +135,7 @@ export class OrganizationsController {
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ description: 'Member not found', type: ApiErrorDto })
+  // Swagger docs END
   async updateMember(
     @Session() session: UserSession,
     @Param('organizationId') organizationId: string,
@@ -139,6 +151,7 @@ export class OrganizationsController {
   }
 
   @Delete(':organizationId/members/:memberId')
+  // Swagger docs START
   @ApiOperation({ summary: 'Remove a member' })
   @ApiOkResponse({ type: RemoveMemberResponseDto })
   @ApiBadRequestResponse({
@@ -147,6 +160,7 @@ export class OrganizationsController {
   })
   @ApiForbiddenResponse({ type: ApiErrorDto })
   @ApiNotFoundResponse({ description: 'Member not found', type: ApiErrorDto })
+  // Swagger docs END
   async removeMember(
     @Session() session: UserSession,
     @Param('organizationId') organizationId: string,

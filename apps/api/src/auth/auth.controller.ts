@@ -17,7 +17,9 @@ import { AuthResponseDto } from './dto/auth-response.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { SignUpDto } from './dto/signup.dto.js';
 
+// Swagger docs START
 @ApiTags('Auth')
+// Swagger docs END
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -25,6 +27,7 @@ export class AuthController {
   @Post('signup')
   @AllowAnonymous()
   @HttpCode(201)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Create an account',
     description:
@@ -37,6 +40,7 @@ export class AuthController {
     type: ApiErrorDto,
   })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async signUp(
     @Body() body: SignUpDto,
     @Req() req: Request,
@@ -48,6 +52,7 @@ export class AuthController {
   @Post('login')
   @AllowAnonymous()
   @HttpCode(200)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Sign in',
     description:
@@ -60,6 +65,7 @@ export class AuthController {
     type: ApiErrorDto,
   })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async login(
     @Body() body: LoginDto,
     @Req() req: Request,

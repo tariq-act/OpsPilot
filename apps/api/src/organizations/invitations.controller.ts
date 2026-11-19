@@ -15,14 +15,17 @@ import { ApiSession } from '../swagger/api-session.decorator.js';
 import { AcceptInvitationResponseDto } from './dto/organization-response.dto.js';
 import { OrganizationsService } from './organizations.service.js';
 
+// Swagger docs START
 @ApiTags('Invitations')
 @ApiSession()
+// Swagger docs END
 @Controller('invitations')
 export class InvitationsController {
   constructor(private readonly organizationsService: OrganizationsService) {}
 
   @Post(':token/accept')
   @HttpCode(200)
+  // Swagger docs START
   @ApiOperation({
     summary: 'Accept a team invitation',
     description:
@@ -44,6 +47,7 @@ export class InvitationsController {
     type: ApiErrorDto,
   })
   @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async accept(
     @Session() session: UserSession,
     @Param('token') token: string,

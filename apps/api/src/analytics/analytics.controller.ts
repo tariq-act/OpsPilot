@@ -27,6 +27,7 @@ import {
   AnalyticsTechniciansResponseDto,
 } from './dto/analytics-response.dto.js';
 
+// Swagger docs START
 @ApiTags('Analytics')
 @ApiSession()
 @ApiHeader({
@@ -35,11 +36,13 @@ import {
     'Active organization context. Must match an organization the signed-in user belongs to. Never sent in the request body.',
   required: true,
 })
+// Swagger docs END
 @Controller('analytics')
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
   @Get('overview')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Organization analytics overview',
     description:
@@ -48,6 +51,7 @@ export class AnalyticsController {
   @ApiOkResponse({ type: AnalyticsOverviewResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async overview(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -61,6 +65,7 @@ export class AnalyticsController {
   }
 
   @Get('jobs')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Job analytics',
     description:
@@ -69,6 +74,7 @@ export class AnalyticsController {
   @ApiOkResponse({ type: AnalyticsJobsResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async jobs(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -78,6 +84,7 @@ export class AnalyticsController {
   }
 
   @Get('revenue')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Revenue analytics',
     description:
@@ -86,6 +93,7 @@ export class AnalyticsController {
   @ApiOkResponse({ type: AnalyticsRevenueResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async revenue(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -99,6 +107,7 @@ export class AnalyticsController {
   }
 
   @Get('technicians')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Technician workload analytics',
     description:
@@ -107,6 +116,7 @@ export class AnalyticsController {
   @ApiOkResponse({ type: AnalyticsTechniciansResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async technicians(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,
@@ -120,6 +130,7 @@ export class AnalyticsController {
   }
 
   @Get('customers')
+  // Swagger docs START
   @ApiOperation({
     summary: 'Customer analytics',
     description:
@@ -128,6 +139,7 @@ export class AnalyticsController {
   @ApiOkResponse({ type: AnalyticsCustomersResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })
   @ApiForbiddenResponse({ type: ApiErrorDto })
+  // Swagger docs END
   async customers(
     @Session() session: UserSession,
     @OrganizationId() organizationId: string,

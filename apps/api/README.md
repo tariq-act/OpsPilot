@@ -58,6 +58,44 @@ compiler plugin in `nest-cli.json`. Update those classes and the controller
 decorators in the same change as the route. `.cursor/rules/api-swagger.mdc`
 is the checklist.
 
+### Recognizing Swagger documentation
+
+Code between `// Swagger docs START` and `// Swagger docs END` configures
+API documentation. Each contiguous group of Swagger decorators has its own
+pair of markers. Runtime route decorators, field declarations, validation,
+and request handlers stay outside these blocks. Shared Swagger helpers and
+documentation setup also have explicit boundaries.
+
+Every `@Api*` decorator in this API describes the OpenAPI document; it does
+not implement the endpoint or enforce its rules.
+
+| Code                                                                         | Responsibility                                                                               |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `@ApiTags`, `@ApiOperation`                                                  | Group and describe endpoints in Swagger.                                                     |
+| `@ApiProperty`, `@ApiHeader`, `@ApiBody`                                     | Describe fields, headers, and request bodies. They do not validate them.                     |
+| `@ApiOkResponse`, `@ApiBadRequestResponse`, other `@Api*Response` decorators | Describe possible responses. They do not return a response or throw an error.                |
+| `@ApiSession()`                                                              | Document the session cookie and a possible 401 response. It does not check the session.      |
+| `@Controller`, `@Get`, `@Post`, `@HttpCode`, `@Header` from `@nestjs/common` | Register real routes and control HTTP behavior.                                              |
+| `@Body`, `@Query`, `@Param`, `@Session`, `@OrganizationId`                   | Read request data and context. `@OrganizationId` also rejects a missing organization header. |
+| `@IsString`, `@MinLength`, other class-validator decorators, `@Transform`    | Validate or transform incoming values through the runtime `ValidationPipe` in `src/main.ts`. |
+| Better Auth guard, service membership checks, database filters               | Enforce authentication, roles, and organization access.                                      |
+
+The Swagger setup lives in `src/swagger/setup-swagger.ts`. Shared Swagger
+helpers live in `src/swagger/`. Controllers handle HTTP requests, services
+implement business rules, and `src/db/queries/` reads and writes data.
+
+DTOs (`*.dto.ts`) can serve two purposes. Their fields describe the API
+shape for Swagger, and their validation decorators also enforce request
+rules at runtime. The Swagger compiler plugin in `nest-cli.json` can infer
+documentation from DTO fields and validation rules, even without an explicit
+`@ApiProperty`. Turning Swagger off does not turn runtime validation off.
+
+For example, in `src/search/dto/search-query.dto.ts`, `@ApiProperty`
+documents the query. `@Transform` trims its value, while `@IsString`,
+`@MinLength`, and `@MaxLength` enforce its accepted type and length.
+`@ApiHeader` documents the organization header in the search controller;
+`@OrganizationId` reads it and the search service checks membership.
+
 ## Run tests
 
 ```bash

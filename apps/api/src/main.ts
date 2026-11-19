@@ -26,6 +26,7 @@ async function bootstrap() {
     bodyParser: false,
   });
 
+  // Runtime input handling: validate and transform incoming requests.
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -40,7 +41,10 @@ async function bootstrap() {
     credentials: true,
   });
 
+  // Swagger docs START
+  // Register the documentation UI and OpenAPI JSON.
   setupSwagger(app);
+  // Swagger docs END
 
   await app.listen(process.env.PORT ?? 3000);
 }

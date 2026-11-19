@@ -3,12 +3,15 @@ import { IsString, MaxLength, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class SearchQueryDto {
+  // Swagger docs START
   @ApiProperty({
     minLength: 2,
     maxLength: 100,
     description:
       'Literal, case insensitive search text. Whitespace is trimmed.',
   })
+  // Swagger docs END
+  // Runtime input validation and transformation.
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
