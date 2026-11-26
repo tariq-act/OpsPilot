@@ -31,8 +31,11 @@ import {
   OrganizationListResponseDto,
   RemoveMemberResponseDto,
   UpdateMemberResponseDto,
+  UpdateOrganizationResponseDto,
+  InvitationListResponseDto,
 } from './dto/organization-response.dto.js';
 import { UpdateMemberDto } from './dto/update-member.dto.js';
+import { UpdateOrganizationDto } from './dto/update-organization.dto.js';
 import { OrganizationsService } from './organizations.service.js';
 
 // Swagger docs START
@@ -64,13 +67,80 @@ export class OrganizationsController {
 
   @Get()
   // Swagger docs START
-  @ApiOperation({ summary: 'List organizations for the signed-in user' })
+  @ApiOperation({
+    summary:
+      'List organizations where the signed-in user has an active membership',
+  })
   @ApiOkResponse({ type: OrganizationListResponseDto })
   // Swagger docs END
   async list(
     @Session() session: UserSession,
   ): Promise<OrganizationListResponseDto> {
     return this.organizationsService.listForUser(session.user.id);
+  }
+
+  @Patch(':organizationId')
+  // Swagger docs START
+  @ApiOperation({ summary: 'Update organization settings (owner or admin)' })
+  @ApiOkResponse({ type: UpdateOrganizationResponseDto })
+  @ApiBadRequestResponse({ type: ApiErrorDto })
+  @ApiForbiddenResponse({ type: ApiErrorDto })
+  @ApiNotFoundResponse({ type: ApiErrorDto })
+  @ApiConflictResponse({
+    description: 'Slug is taken or currency is locked by existing invoices',
+    type: ApiErrorDto,
+  })
+  @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
+  async update(
+    @Session() session: UserSession,
+    @Param('organizationId') organizationId: string,
+    @Body() body: UpdateOrganizationDto,
+  ): Promise<UpdateOrganizationResponseDto> {
+    return this.organizationsService.update(
+      session.user.id,
+      organizationId,
+      body,
+    );
+  }
+
+  @Get(':organizationId/invitations')
+  // Swagger docs START
+  @ApiOperation({
+    summary: 'List invitations without secret tokens (owner or admin)',
+  })
+  @ApiOkResponse({ type: InvitationListResponseDto })
+  @ApiForbiddenResponse({ type: ApiErrorDto })
+  @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
+  async listInvitations(
+    @Session() session: UserSession,
+    @Param('organizationId') organizationId: string,
+  ): Promise<InvitationListResponseDto> {
+    return this.organizationsService.listInvitations(
+      session.user.id,
+      organizationId,
+    );
+  }
+
+  @Delete(':organizationId/invitations/:invitationId')
+  // Swagger docs START
+  @ApiOperation({ summary: 'Revoke a pending invitation (owner or admin)' })
+  @ApiOkResponse({ type: RemoveMemberResponseDto })
+  @ApiForbiddenResponse({ type: ApiErrorDto })
+  @ApiNotFoundResponse({ type: ApiErrorDto })
+  @ApiInternalServerErrorResponse({ type: ApiErrorDto })
+  // Swagger docs END
+  async revokeInvitation(
+    @Session() session: UserSession,
+    @Param('organizationId') organizationId: string,
+    @Param('invitationId') invitationId: string,
+  ): Promise<RemoveMemberResponseDto> {
+    return this.organizationsService.revokeInvitation(
+      session.user.id,
+      organizationId,
+      invitationId,
+    );
   }
 
   @Post(':organizationId/invitations')
@@ -129,7 +199,7 @@ export class OrganizationsController {
   @ApiOperation({
     summary: 'Update a member role or status',
     description:
-      'Send at least one of role or status. Owners cannot be changed.',
+      'Send at least one of role or status. Owners and your own membership cannot be changed. Invited members must accept before activation.',
   })
   @ApiOkResponse({ type: UpdateMemberResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorDto })

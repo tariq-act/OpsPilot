@@ -92,6 +92,19 @@ export async function findOrganizationCurrency(
   return row?.currency ?? null;
 }
 
+/** Serialize invoice creation with organization currency updates. */
+export async function lockOrganizationCurrency(
+  organizationId: string,
+  tx: DbExecutor,
+): Promise<string | null> {
+  const [row] = await tx
+    .select({ currency: organization.currency })
+    .from(organization)
+    .where(eq(organization.id, organizationId))
+    .for('update');
+  return row?.currency ?? null;
+}
+
 export async function createInvoice(
   input: CreateInvoiceInput,
   executor: DbExecutor = db,
@@ -153,15 +166,15 @@ export async function deleteInvoiceItemsForInvoice(
   invoiceId: string,
   executor: DbExecutor = db,
 ): Promise<void> {
-  await executor.delete(invoiceItem).where(eq(invoiceItem.invoiceId, invoiceId));
+  await executor
+    .delete(invoiceItem)
+    .where(eq(invoiceItem.invoiceId, invoiceId));
 }
 
 export async function listInvoicesForOrganization(
   filter: ListInvoicesFilter,
 ): Promise<Invoice[]> {
-  const conditions: SQL[] = [
-    eq(invoice.organizationId, filter.organizationId),
-  ];
+  const conditions: SQL[] = [eq(invoice.organizationId, filter.organizationId)];
 
   if (filter.statuses !== undefined) {
     if (filter.statuses.length === 0) {

@@ -2,10 +2,12 @@
 
 export const AUDIT_ACTIONS = [
   "ORGANIZATION_CREATED",
+  "ORGANIZATION_UPDATED",
   "MEMBER_UPDATED",
   "MEMBER_REMOVED",
   "INVITATION_CREATED",
   "INVITATION_ACCEPTED",
+  "INVITATION_REVOKED",
   "CUSTOMER_CREATED",
   "CUSTOMER_UPDATED",
   "CUSTOMER_DEACTIVATED",
@@ -49,10 +51,12 @@ export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
 
 export const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
   ORGANIZATION_CREATED: "Organization created",
+  ORGANIZATION_UPDATED: "Organization updated",
   MEMBER_UPDATED: "Member updated",
   MEMBER_REMOVED: "Member removed",
   INVITATION_CREATED: "Invitation sent",
   INVITATION_ACCEPTED: "Invitation accepted",
+  INVITATION_REVOKED: "Invitation revoked",
   CUSTOMER_CREATED: "Customer added",
   CUSTOMER_UPDATED: "Customer updated",
   CUSTOMER_DEACTIVATED: "Customer deactivated",

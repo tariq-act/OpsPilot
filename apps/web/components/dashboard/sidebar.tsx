@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   LuBell,
   LuBriefcase,
-  LuBuilding2,
   LuCalendarCheck,
   LuCalendarClock,
   LuChartBar,
@@ -110,16 +110,9 @@ const navItems: NavItem[] = [
     roles: ["OWNER", "ADMIN"],
   },
   {
-    label: "Team",
-    href: "/dashboard/team",
-    icon: LuBuilding2,
-    roles: ["OWNER", "ADMIN"],
-  },
-  {
     label: "Settings",
     href: "/dashboard/settings",
     icon: LuSettings,
-    roles: ["OWNER", "ADMIN"],
   },
 ];
 
@@ -130,6 +123,7 @@ const navItems: NavItem[] = [
 export function DashboardSidebar({ role }: { role: MemberRole }) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { organizations, current, switchOrganization } = useOrg();
 
   // Layout may pass a least-privilege default until orgs load; prefer the
@@ -137,11 +131,14 @@ export function DashboardSidebar({ role }: { role: MemberRole }) {
   const activeRole = current?.role ?? role;
 
   const visibleItems = navItems.filter(
-    (item) => !item.roles || item.roles.includes(activeRole),
+    (item) =>
+      item.href === "/dashboard/settings" ||
+      (current && (!item.roles || item.roles.includes(activeRole))),
   );
 
   async function handleSignOut() {
     await authClient.signOut();
+    queryClient.clear();
     router.replace("/login");
   }
 

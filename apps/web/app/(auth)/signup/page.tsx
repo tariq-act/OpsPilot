@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { BrandMark } from "@/components/auth/brand-mark";
 import { SignupForm } from "@/components/auth/signup-form";
@@ -29,7 +30,13 @@ export default function SignupPage() {
         </div>
         <div className="flex flex-1 items-center justify-center px-6 py-8 sm:px-10">
           <div className="w-full max-w-md">
-            <SignupForm />
+            <Suspense
+              fallback={
+                <div className="h-96 w-full animate-pulse rounded-2xl bg-muted" />
+              }
+            >
+              <SignupForm />
+            </Suspense>
           </div>
         </div>
         <footer className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 px-6 pb-8 text-xs text-muted-foreground">

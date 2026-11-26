@@ -6,6 +6,9 @@
  */
 
 export const queryKeys = {
+  account: {
+    sessions: (userId: string) => ["account", userId, "sessions"] as const,
+  },
   search: {
     results: (
       organizationId: string,
@@ -20,6 +23,8 @@ export const queryKeys = {
     list: () => [...queryKeys.organizations.lists()] as const,
     members: (organizationId: string) =>
       [...queryKeys.organizations.all, organizationId, "members"] as const,
+    invitations: (organizationId: string) =>
+      [...queryKeys.organizations.all, organizationId, "invitations"] as const,
   },
 
   customers: {
@@ -119,8 +124,7 @@ export const queryKeys = {
   },
 
   notifications: {
-    all: (organizationId: string) =>
-      ["notifications", organizationId] as const,
+    all: (organizationId: string) => ["notifications", organizationId] as const,
     lists: (organizationId: string) =>
       [...queryKeys.notifications.all(organizationId), "list"] as const,
     list: (
@@ -149,7 +153,11 @@ export const queryKeys = {
       organizationId: string,
       filters: Record<string, string | undefined> = {},
     ) =>
-      [...queryKeys.analytics.all(organizationId), "overview", filters] as const,
+      [
+        ...queryKeys.analytics.all(organizationId),
+        "overview",
+        filters,
+      ] as const,
     jobs: (
       organizationId: string,
       filters: Record<string, string | undefined> = {},

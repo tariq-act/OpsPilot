@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { LuCircleCheck, LuCircleX, LuLoader } from "react-icons/lu";
 
 import { BrandMark } from "@/components/auth/brand-mark";
@@ -10,6 +11,7 @@ import { api, ApiError } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
 import { toUserErrorMessage } from "@/lib/query/errors";
 import type { AcceptInvitationResponse } from "@/lib/types";
+import { queryKeys } from "@/lib/query/keys";
 
 type State = "loading" | "success" | "error";
 
@@ -17,6 +19,7 @@ function AcceptInvitationContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const token = searchParams.get("token");
 
   const { data: session, isPending: sessionLoading } = authClient.useSession();
@@ -28,6 +31,7 @@ function AcceptInvitationContent() {
     token ? "" : "No invitation token provided.",
   );
   const hasAttempted = useRef(false);
+  const [switchingAccount, setSwitchingAccount] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -47,11 +51,16 @@ function AcceptInvitationContent() {
     hasAttempted.current = true;
 
     api
-      .post<AcceptInvitationResponse>(`/invitations/${token}/accept`)
-      .then((res) => {
+      .post<AcceptInvitationResponse>(
+        `/invitations/${encodeURIComponent(token)}/accept`,
+      )
+      .then(async (res) => {
         if (typeof window !== "undefined" && res.membership?.organizationId) {
           sessionStorage.setItem("opspilot:org", res.membership.organizationId);
         }
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.organizations.all,
+        });
         setState("success");
       })
       .catch((err: unknown) => {
@@ -64,13 +73,36 @@ function AcceptInvitationContent() {
           toUserErrorMessage(err, "Unable to accept invitation."),
         );
       });
-  }, [token, sessionLoading, session, pathname, searchParams, router]);
+  }, [
+    token,
+    sessionLoading,
+    session,
+    pathname,
+    searchParams,
+    router,
+    queryClient,
+  ]);
 
   const queryString = searchParams.toString();
   const fullPath = queryString ? `${pathname}?${queryString}` : pathname;
   const backToLoginUrl = token
     ? `/login?next=${encodeURIComponent(fullPath)}`
     : "/login";
+
+  async function switchAccount() {
+    setSwitchingAccount(true);
+    try {
+      if (session?.user) {
+        const result = await authClient.signOut();
+        if (result.error) throw new Error("Unable to sign out.");
+        queryClient.clear();
+      }
+      router.replace(backToLoginUrl);
+    } catch {
+      setErrorMessage("Unable to switch accounts. Please try again.");
+      setSwitchingAccount(false);
+    }
+  }
 
   return (
     <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 text-center shadow-md">
@@ -121,9 +153,14 @@ function AcceptInvitationContent() {
             variant="outline"
             size="lg"
             className="w-full rounded-xl"
-            onClick={() => router.replace(backToLoginUrl)}
+            disabled={switchingAccount}
+            onClick={() => void switchAccount()}
           >
-            Back to login
+            {switchingAccount
+              ? "Signing out…"
+              : session?.user
+                ? "Sign in with another account"
+                : "Back to login"}
           </Button>
         </>
       )}

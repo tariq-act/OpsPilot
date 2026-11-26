@@ -11,6 +11,15 @@ import {
   createOrganization,
   listMembers,
   listOrganizations,
+  updateOrganization,
+  listInvitations,
+  createInvitation,
+  revokeInvitation,
+  updateMember,
+  removeMember,
+  type OrganizationSettingsInput,
+  type TeamRole,
+  type MemberUpdate,
   type CreateOrganizationInput,
 } from "@/lib/api/organizations";
 import { queryKeys } from "@/lib/query/keys";
@@ -27,6 +36,7 @@ export const organizationQueries = {
     queryOptions({
       queryKey: queryKeys.organizations.list(),
       queryFn: listOrganizations,
+      refetchOnWindowFocus: "always",
     }),
 
   members: (organizationId: string) =>
@@ -147,3 +157,89 @@ export function useCreateOrganizationMutation() {
 }
 
 export type { MemberListResponse, OrganizationListResponse };
+
+export function useUpdateOrganizationMutation(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: OrganizationSettingsInput) =>
+      updateOrganization(id, input),
+    onSuccess: ({ organization }) => {
+      client.setQueryData<OrganizationListResponse>(
+        queryKeys.organizations.list(),
+        (previous) =>
+          previous && {
+            organizations: previous.organizations.map((org) =>
+              org.id === id ? { ...org, ...organization } : org,
+            ),
+          },
+      );
+      return Promise.all([
+        client.invalidateQueries({ queryKey: queryKeys.organizations.list() }),
+        client.invalidateQueries({ queryKey: queryKeys.auditLogs.all(id) }),
+        client.invalidateQueries({ queryKey: queryKeys.analytics.all(id) }),
+      ]);
+    },
+  });
+}
+
+export function useInvitationsQuery(id: string) {
+  return useQuery({
+    queryKey: queryKeys.organizations.invitations(id),
+    queryFn: () => listInvitations(id),
+    enabled: Boolean(id),
+  });
+}
+
+export function useTeamMutations(id: string) {
+  const client = useQueryClient();
+  const refreshAudit = () =>
+    client.invalidateQueries({ queryKey: queryKeys.auditLogs.all(id) });
+  const refreshMembers = () =>
+    Promise.all([
+      client.invalidateQueries({
+        queryKey: queryKeys.organizations.members(id),
+      }),
+      client.invalidateQueries({
+        queryKey: queryKeys.organizations.invitations(id),
+      }),
+      refreshAudit(),
+    ]);
+  const refreshInvitations = () =>
+    Promise.all([
+      client.invalidateQueries({
+        queryKey: queryKeys.organizations.invitations(id),
+      }),
+      refreshAudit(),
+    ]);
+  const invite = useMutation({
+    mutationFn: (input: { email: string; role: TeamRole }) =>
+      createInvitation(id, input),
+    onSuccess: refreshInvitations,
+    gcTime: 0,
+  });
+  const revoke = useMutation({
+    mutationFn: (invitationId: string) => revokeInvitation(id, invitationId),
+    onSuccess: refreshInvitations,
+  });
+  const update = useMutation({
+    mutationFn: ({ memberId, ...input }: MemberUpdate & { memberId: string }) =>
+      updateMember(id, memberId, input),
+    onSuccess: ({ member }) => {
+      client.setQueryData<MemberListResponse>(
+        queryKeys.organizations.members(id),
+        (previous) =>
+          previous && {
+            members: previous.members.map((current) =>
+              current.id === member.id ? { ...current, ...member } : current,
+            ),
+          },
+      );
+      return refreshMembers();
+    },
+  });
+  const remove = useMutation({
+    mutationFn: (memberId: string) => removeMember(id, memberId),
+    onSuccess: refreshMembers,
+  });
+  return { invite, revoke, update, remove };
+}

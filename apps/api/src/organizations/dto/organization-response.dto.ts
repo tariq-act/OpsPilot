@@ -39,6 +39,10 @@ export class OrganizationListResponseDto {
   organizations!: OrganizationListItemDto[];
 }
 
+export class UpdateOrganizationResponseDto {
+  organization!: OrganizationDto;
+}
+
 export class InvitationDto {
   id!: string;
   organizationId!: string;
@@ -52,6 +56,21 @@ export class InvitationDto {
 
 export class CreateInvitationResponseDto {
   invitation!: InvitationDto;
+}
+
+export class InvitationListItemDto {
+  id!: string;
+  organizationId!: string;
+  email!: string;
+  role!: OrganizationMemberRole;
+  currentRole!: OrganizationMemberRole | null;
+  status!: OrganizationInvitationStatus;
+  expiresAt!: Date;
+  createdAt!: Date;
+}
+
+export class InvitationListResponseDto {
+  invitations!: InvitationListItemDto[];
 }
 
 export class MemberDto {
