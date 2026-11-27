@@ -17,7 +17,6 @@ import {
   findCustomerInOrganization,
   findInvoiceInOrganization,
   findJobInOrganization,
-  findOrganizationCurrency,
   listInvoicesForOrganization,
   listItemsForInvoice,
   listItemsForInvoices,
@@ -26,13 +25,17 @@ import {
   updateInvoiceStatusInOrganization,
   updateInvoiceTotalsInOrganization,
 } from '../db/queries/index.js';
+import { lockOrganizationCurrency } from '../db/queries/invoices.js';
 import { db } from '../db/index.js';
 import type { Invoice, InvoiceItem } from '../db/schema/invoice.js';
 import type {
   OrganizationMember,
   OrganizationMemberRole,
 } from '../db/schema/organization.js';
-import type { CreateInvoiceDto, CreateInvoiceItemDto } from './dto/create-invoice.dto.js';
+import type {
+  CreateInvoiceDto,
+  CreateInvoiceItemDto,
+} from './dto/create-invoice.dto.js';
 import type { ListInvoicesQueryDto } from './dto/list-invoices-query.dto.js';
 import type { UpdateInvoiceDto } from './dto/update-invoice.dto.js';
 import {
@@ -175,15 +178,6 @@ export class InvoicesService {
       });
     }
 
-    const currency = await findOrganizationCurrency(organizationId);
-    if (!currency) {
-      throw new NotFoundException({
-        statusCode: 404,
-        message: 'Organization not found',
-        error: 'Not Found',
-      });
-    }
-
     let lines: ComputedLine[];
     let totals: ReturnType<typeof calculateInvoiceTotals>;
     try {
@@ -214,6 +208,8 @@ export class InvoicesService {
 
     try {
       const created = await db.transaction(async (tx) => {
+        const currency = await lockOrganizationCurrency(organizationId, tx);
+        if (!currency) throw new NotFoundException('Organization not found');
         const invoiceNumber = await nextInvoiceNumber(organizationId, tx);
         const invoiceId = randomUUID();
 
@@ -270,10 +266,8 @@ export class InvoicesService {
 
       return { invoice: toInvoiceDto(created.row, created.items) };
     } catch (error) {
-      if (
-        error instanceof Error &&
-        /unique|duplicate/i.test(error.message)
-      ) {
+      if (error instanceof NotFoundException) throw error;
+      if (error instanceof Error && /unique|duplicate/i.test(error.message)) {
         throw new ConflictException({
           statusCode: 409,
           message: 'Unable to create invoice due to a conflict',
@@ -538,11 +532,7 @@ export class InvoicesService {
     }
   }
 
-  async send(
-    actorUserId: string,
-    organizationId: string,
-    invoiceId: string,
-  ) {
+  async send(actorUserId: string, organizationId: string, invoiceId: string) {
     await this.requireInvoiceManager(organizationId, actorUserId);
 
     const existing = await findInvoiceInOrganization(organizationId, invoiceId);
@@ -631,11 +621,7 @@ export class InvoicesService {
     return { invoice: toInvoiceDto(updated, items) };
   }
 
-  async void(
-    actorUserId: string,
-    organizationId: string,
-    invoiceId: string,
-  ) {
+  async void(actorUserId: string, organizationId: string, invoiceId: string) {
     await this.requireInvoiceManager(organizationId, actorUserId);
 
     const existing = await findInvoiceInOrganization(organizationId, invoiceId);
@@ -711,9 +697,7 @@ export class InvoicesService {
         throw new Error(`items[${index}].quantity must be greater than zero`);
       }
       if (unitPriceCents < 0n) {
-        throw new Error(
-          `items[${index}].unitPrice must be non-negative`,
-        );
+        throw new Error(`items[${index}].unitPrice must be non-negative`);
       }
 
       const amountCents = lineAmountCents(quantityHundredths, unitPriceCents);
@@ -782,8 +766,7 @@ export class InvoicesService {
     if (!isInvoiceManagerRole(membership.role)) {
       throw new ForbiddenException({
         statusCode: 403,
-        message:
-          'Only owners, admins, and dispatchers can manage invoices',
+        message: 'Only owners, admins, and dispatchers can manage invoices',
         error: 'Forbidden',
       });
     }

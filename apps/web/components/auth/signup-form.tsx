@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { LuArrowRight, LuMail, LuUserRound } from "react-icons/lu";
 
@@ -41,6 +41,10 @@ const requirements = [
 
 export function SignupForm() {
   const router = useRouter();
+  const requestedNext = useSearchParams().get("next");
+  const nextUrl = requestedNext?.startsWith("/invitations/accept?")
+    ? requestedNext
+    : "/onboarding";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -100,7 +104,7 @@ export function SignupForm() {
       }
 
       // New user lands on onboarding to create their first organization.
-      router.push("/onboarding");
+      router.push(nextUrl);
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -252,7 +256,11 @@ export function SignupForm() {
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link
-              href="/login"
+              href={
+                nextUrl === "/onboarding"
+                  ? "/login"
+                  : `/login?next=${encodeURIComponent(nextUrl)}`
+              }
               className="font-medium text-primary hover:text-primary/80"
             >
               Log in

@@ -8,6 +8,10 @@ import type {
   CreateOrganizationResponse,
   MemberListResponse,
   OrganizationListResponse,
+  Organization,
+  Invitation,
+  CreateInvitationResponse,
+  Member,
 } from "@/lib/types";
 
 export interface CreateOrganizationInput {
@@ -20,7 +24,73 @@ export interface CreateOrganizationInput {
   address?: string;
 }
 
-/** List all organizations the signed-in user belongs to. */
+export type OrganizationSettingsInput = Partial<
+  Pick<
+    Organization,
+    | "name"
+    | "slug"
+    | "logo"
+    | "phone"
+    | "email"
+    | "address"
+    | "timezone"
+    | "currency"
+  >
+>;
+export type TeamRole = Exclude<Member["role"], "OWNER">;
+export type MemberUpdate = { role?: TeamRole; status?: "ACTIVE" | "SUSPENDED" };
+export type InvitationSummary = Omit<Invitation, "token"> & {
+  currentRole: Member["role"] | null;
+};
+
+export function updateOrganization(
+  id: string,
+  data: OrganizationSettingsInput,
+) {
+  return api.patch<{ organization: Organization }>(
+    `/organizations/${id}`,
+    data,
+  );
+}
+
+export function createInvitation(
+  id: string,
+  data: { email: string; role: TeamRole },
+) {
+  return api.post<CreateInvitationResponse>(
+    `/organizations/${id}/invitations`,
+    data,
+  );
+}
+
+export function listInvitations(id: string) {
+  return api.get<{ invitations: InvitationSummary[] }>(
+    `/organizations/${id}/invitations`,
+  );
+}
+
+export function revokeInvitation(id: string, invitationId: string) {
+  return api.delete<{ success: boolean }>(
+    `/organizations/${id}/invitations/${invitationId}`,
+  );
+}
+
+export function updateMember(id: string, memberId: string, data: MemberUpdate) {
+  return api.patch<{
+    member: Pick<
+      Member,
+      "id" | "organizationId" | "userId" | "role" | "status" | "updatedAt"
+    >;
+  }>(`/organizations/${id}/members/${memberId}`, data);
+}
+
+export function removeMember(id: string, memberId: string) {
+  return api.delete<{ success: boolean }>(
+    `/organizations/${id}/members/${memberId}`,
+  );
+}
+
+/** List organizations where the signed-in user is an active member. */
 export function listOrganizations(): Promise<OrganizationListResponse> {
   return api.get<OrganizationListResponse>("/organizations");
 }

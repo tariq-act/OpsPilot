@@ -1,4 +1,4 @@
-import { and, eq, gt } from 'drizzle-orm';
+import { and, desc, eq, gt } from 'drizzle-orm';
 import { db } from '../index.js';
 import { user } from '../schema/auth.js';
 import {
@@ -19,6 +19,7 @@ export const INVITABLE_ROLES = [
 ] as const satisfies readonly OrganizationMemberRole[];
 
 export type InvitableRole = (typeof INVITABLE_ROLES)[number];
+export class InvitationNotPendingError extends Error {}
 
 export const MANAGER_ROLES = [
   'OWNER',
@@ -203,6 +204,53 @@ export async function findInvitationByToken(
   return row ?? null;
 }
 
+export async function listInvitationsForOrganization(organizationId: string) {
+  return db
+    .select({
+      id: organizationInvitation.id,
+      organizationId: organizationInvitation.organizationId,
+      email: organizationInvitation.email,
+      role: organizationInvitation.role,
+      currentRole: organizationMember.role,
+      status: organizationInvitation.status,
+      expiresAt: organizationInvitation.expiresAt,
+      createdAt: organizationInvitation.createdAt,
+    })
+    .from(organizationInvitation)
+    .leftJoin(
+      organizationMember,
+      and(
+        eq(organizationInvitation.status, 'ACCEPTED'),
+        eq(
+          organizationMember.organizationId,
+          organizationInvitation.organizationId,
+        ),
+        eq(organizationMember.userId, organizationInvitation.acceptedUserId),
+      ),
+    )
+    .where(eq(organizationInvitation.organizationId, organizationId))
+    .orderBy(desc(organizationInvitation.createdAt));
+}
+
+export async function revokeInvitationInOrganization(
+  organizationId: string,
+  invitationId: string,
+) {
+  const [row] = await db
+    .update(organizationInvitation)
+    .set({ status: 'REVOKED' })
+    .where(
+      and(
+        eq(organizationInvitation.organizationId, organizationId),
+        eq(organizationInvitation.id, invitationId),
+        eq(organizationInvitation.status, 'PENDING'),
+        gt(organizationInvitation.expiresAt, new Date()),
+      ),
+    )
+    .returning({ id: organizationInvitation.id });
+  return row ?? null;
+}
+
 export async function markInvitationExpired(
   invitationId: string,
 ): Promise<void> {
@@ -223,7 +271,10 @@ export async function acceptInvitation(input: {
   userId: string;
   role: InvitableRole;
   membershipId: string;
-}): Promise<{ membership: OrganizationMember; invitation: OrganizationInvitation }> {
+}): Promise<{
+  membership: OrganizationMember;
+  invitation: OrganizationInvitation;
+}> {
   return db.transaction(async (tx) => {
     const [membership] = await tx
       .insert(organizationMember)
@@ -257,7 +308,7 @@ export async function acceptInvitation(input: {
       .returning();
 
     if (!invitation) {
-      throw new Error('Invitation is no longer pending');
+      throw new InvitationNotPendingError('Invitation is no longer pending');
     }
 
     return { membership, invitation };

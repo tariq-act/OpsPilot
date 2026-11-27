@@ -24,7 +24,13 @@ import { authClient } from "@/lib/auth-client";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextUrl = searchParams.get("next") ?? "/dashboard";
+  const requestedNext = searchParams.get("next");
+  const nextUrl =
+    requestedNext?.startsWith("/") &&
+    !requestedNext.startsWith("//") &&
+    !requestedNext.includes("\\")
+      ? requestedNext
+      : "/dashboard";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -155,7 +161,11 @@ export function LoginForm() {
           <p className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
             <Link
-              href="/signup"
+              href={
+                nextUrl.startsWith("/invitations/accept?")
+                  ? `/signup?next=${encodeURIComponent(nextUrl)}`
+                  : "/signup"
+              }
               className="font-medium text-primary hover:text-primary/80"
             >
               Create account

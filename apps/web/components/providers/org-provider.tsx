@@ -64,8 +64,16 @@ function getServerOrgId(): string | null {
 }
 
 export function OrgProvider({ children }: { children: ReactNode }) {
-  const { organizations, server, refetch, isPending, isError } =
-    useOrganizationsQuery();
+  const {
+    organizations: memberships,
+    server,
+    refetch,
+    isPending,
+    isError,
+  } = useOrganizationsQuery();
+  const organizations = memberships.filter(
+    (org) => org.membershipStatus === "ACTIVE",
+  );
 
   const storedId = useSyncExternalStore(
     subscribeOrgSelection,

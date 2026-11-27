@@ -18,7 +18,10 @@ import {
   findMembershipByOrgUser,
   findPendingInvitationByOrgEmail,
   isManagerRole,
+  InvitationNotPendingError,
   listMembersForOrganization,
+  listInvitationsForOrganization,
+  revokeInvitationInOrganization,
   markInvitationExpired,
   updateMemberInOrganization,
   type InvitableRole,
@@ -26,28 +29,35 @@ import {
 import {
   createOrganizationWithOwner,
   listOrganizationsForUser,
+  updateOrganization,
+  OrganizationCurrencyLockedError,
 } from '../db/queries/organizations.js';
 import { AuditAction, AuditEntityType } from '../audit/audit.actions.js';
 import { AuditService } from '../audit/audit.service.js';
 import type { CreateInvitationDto } from './dto/create-invitation.dto.js';
 import type { CreateOrganizationDto } from './dto/create-organization.dto.js';
 import type { UpdateMemberDto } from './dto/update-member.dto.js';
+import type { UpdateOrganizationDto } from './dto/update-organization.dto.js';
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function isUniqueViolation(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const { code, cause } = error as { code?: unknown; cause?: unknown };
   return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code?: unknown }).code === '23505'
+    code === '23505' ||
+    (typeof cause === 'object' &&
+      cause !== null &&
+      (cause as { code?: unknown }).code === '23505')
   );
 }
 
 function uniqueConstraintName(error: unknown): string {
   if (typeof error !== 'object' || error === null) return '';
   if ('constraint_name' in error) {
-    return String((error as { constraint_name?: unknown }).constraint_name ?? '');
+    return String(
+      (error as { constraint_name?: unknown }).constraint_name ?? '',
+    );
   }
   if ('constraint' in error) {
     return String((error as { constraint?: unknown }).constraint ?? '');
@@ -132,6 +142,78 @@ export class OrganizationsService {
   async listForUser(userId: string) {
     const organizations = await listOrganizationsForUser(userId);
     return { organizations };
+  }
+
+  async update(
+    actorUserId: string,
+    organizationId: string,
+    dto: UpdateOrganizationDto,
+  ) {
+    await this.requireManager(organizationId, actorUserId);
+    const fields = Object.keys(dto).filter(
+      (key) => dto[key as keyof UpdateOrganizationDto] !== undefined,
+    );
+    if (!fields.length)
+      throw new BadRequestException('At least one setting is required');
+    let organization;
+    try {
+      organization = await updateOrganization(organizationId, dto);
+    } catch (error) {
+      if (error instanceof OrganizationCurrencyLockedError) {
+        throw new ConflictException(
+          'Currency cannot be changed after invoices have been created',
+        );
+      }
+      if (isUniqueViolation(error)) {
+        throw new ConflictException('Organization slug already taken');
+      }
+      throw error;
+    }
+    if (!organization) throw new NotFoundException('Organization not found');
+    await this.audit.recordCritical({
+      organizationId,
+      actorUserId,
+      action: AuditAction.ORGANIZATION_UPDATED,
+      entityType: AuditEntityType.ORGANIZATION,
+      entityId: organizationId,
+      metadata: { fields },
+    });
+    return { organization };
+  }
+
+  async listInvitations(actorUserId: string, organizationId: string) {
+    await this.requireManager(organizationId, actorUserId);
+    const invitations = await listInvitationsForOrganization(organizationId);
+    return {
+      invitations: invitations.map((invite) => ({
+        ...invite,
+        status:
+          invite.status === 'PENDING' && invite.expiresAt <= new Date()
+            ? ('EXPIRED' as const)
+            : invite.status,
+      })),
+    };
+  }
+
+  async revokeInvitation(
+    actorUserId: string,
+    organizationId: string,
+    invitationId: string,
+  ) {
+    await this.requireManager(organizationId, actorUserId);
+    const revoked = await revokeInvitationInOrganization(
+      organizationId,
+      invitationId,
+    );
+    if (!revoked) throw new NotFoundException('Pending invitation not found');
+    await this.audit.recordCritical({
+      organizationId,
+      actorUserId,
+      action: AuditAction.INVITATION_REVOKED,
+      entityType: AuditEntityType.INVITATION,
+      entityId: invitationId,
+    });
+    return { success: true };
   }
 
   async createInvitation(
@@ -261,6 +343,15 @@ export class OrganizationsService {
         message: 'Cannot change the organization owner',
         error: 'Forbidden',
       });
+    }
+
+    if (target.userId === actorUserId) {
+      throw new BadRequestException('Cannot change your own membership');
+    }
+    if (target.status === 'INVITED' && dto.status !== undefined) {
+      throw new BadRequestException(
+        'Invited members must accept their invitation before their status can be updated',
+      );
     }
 
     const updated = await updateMemberInOrganization({
@@ -401,7 +492,10 @@ export class OrganizationsService {
       });
     }
 
-    if (invitation.role === 'OWNER' || !this.isSafeInviteRole(invitation.role)) {
+    if (
+      invitation.role === 'OWNER' ||
+      !this.isSafeInviteRole(invitation.role)
+    ) {
       throw new BadRequestException({
         statusCode: 400,
         message: 'Invitation role is invalid',
@@ -460,6 +554,9 @@ export class OrganizationsService {
         },
       };
     } catch (error) {
+      if (error instanceof InvitationNotPendingError) {
+        throw new ConflictException('Invitation is no longer pending');
+      }
       if (isUniqueViolation(error)) {
         throw new ConflictException({
           statusCode: 409,
@@ -497,7 +594,7 @@ export class OrganizationsService {
     if (!isManagerRole(membership.role)) {
       throw new ForbiddenException({
         statusCode: 403,
-        message: 'Only owners and admins can manage the team',
+        message: 'Only owners and admins can manage organization settings',
         error: 'Forbidden',
       });
     }

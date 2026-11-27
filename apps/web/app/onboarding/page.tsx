@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 import { LuArrowRight, LuBuilding2 } from "react-icons/lu";
 
@@ -141,6 +142,12 @@ export default function OnboardingPage() {
               {!loading && <LuArrowRight data-icon="inline-end" />}
             </Button>
           </form>
+          <Link
+            href="/dashboard/settings/profile"
+            className="mt-4 block text-center text-sm text-primary hover:underline"
+          >
+            Manage my profile and security
+          </Link>
         </CardContent>
       </Card>
     </div>

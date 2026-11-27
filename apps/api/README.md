@@ -96,6 +96,36 @@ documents the query. `@Transform` trims its value, while `@IsString`,
 `@ApiHeader` documents the organization header in the search controller;
 `@OrganizationId` reads it and the search service checks membership.
 
+### Settings and organization management
+
+The web Settings section is under `/dashboard/settings`. Active owners and
+admins can edit the organization and manage invitations and memberships.
+Personal profile and security settings are available to the signed-in user,
+independently of organization membership.
+
+| Method and route                                                  | Purpose                                                         |
+| ----------------------------------------------------------------- | --------------------------------------------------------------- |
+| `GET /organizations`                                              | List active memberships and organization details                |
+| `PATCH /organizations/:organizationId`                            | Update business identity, contact details, timezone or currency |
+| `POST /organizations/:organizationId/invitations`                 | Create a seven-day invitation with a private token              |
+| `GET /organizations/:organizationId/invitations`                  | List invitation metadata without tokens                         |
+| `DELETE /organizations/:organizationId/invitations/:invitationId` | Revoke a pending invitation                                     |
+| `POST /invitations/:token/accept`                                 | Accept an invitation using the matching signed-in email         |
+| `GET /organizations/:organizationId/members`                      | List members (active membership required)                       |
+| `PATCH /organizations/:organizationId/members/:memberId`          | Change a non-owner teammate's role or suspend/reactivate them   |
+| `DELETE /organizations/:organizationId/members/:memberId`         | Remove a non-owner teammate                                     |
+
+The update endpoint accepts a partial body with `name`, `slug`, `logo`,
+`phone`, `email`, `address`, `timezone`, and `currency`. Nullable contact and
+logo fields can be cleared with `null`. An organization's currency cannot be
+changed after its first invoice, because revenue reports assume a single
+currency. Invitations use private, manually shared links: email delivery is
+not configured. No new database migration is required.
+
+Profile edits, password changes, active session listing and revoking other
+sessions use the existing Better Auth endpoints under `/api/auth`. Email
+changes and MFA are not enabled in the current auth configuration.
+
 ## Run tests
 
 ```bash

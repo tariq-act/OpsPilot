@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useOrg } from "@/components/providers/org-provider";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 
@@ -12,12 +12,18 @@ import { PageSkeleton } from "@/components/ui/page-skeleton";
 export function OrgGuard({ children }: { children: ReactNode }) {
   const { organizations, loading, error } = useOrg();
   const router = useRouter();
+  const pathname = usePathname();
+  const isSettings =
+    pathname === "/dashboard/settings" ||
+    pathname.startsWith("/dashboard/settings/");
 
   useEffect(() => {
-    if (!loading && organizations.length === 0 && !error) {
+    if (!isSettings && !loading && organizations.length === 0 && !error) {
       router.replace("/onboarding");
     }
-  }, [loading, organizations.length, error, router]);
+  }, [loading, organizations.length, error, router, isSettings]);
+
+  if (isSettings) return <>{children}</>;
 
   if (loading) return <PageSkeleton />;
 

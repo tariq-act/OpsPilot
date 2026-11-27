@@ -186,6 +186,43 @@ does not change an already initialized database. Avoid `docker compose down -v`
 unless you intend to delete the local database. Migrations are explicit and
 are not run automatically by container startup.
 
+### Local demo data
+
+After applying the migrations, optionally populate a local development database
+with fictional OpsPilot data:
+
+```sh
+bun run db:up
+bun run --filter=api db:migrate
+DEMO_SEED_PASSWORD='OpsPilotDemo123!' bun run --filter=api db:seed
+bun run dev
+```
+
+Set `DATABASE_URL` in `apps/api/.env` to the local PostgreSQL instance and
+configure `BETTER_AUTH_SECRET` before running the seed. Choose a password of
+12–128 characters; the one above is an example for local development only.
+All new demo accounts use the supplied password and are created via Better Auth.
+
+| Sign-in email                    | Role                                |
+| -------------------------------- | ----------------------------------- |
+| `seed.owner@opspilot.test`       | Northstar owner                     |
+| `seed.admin@opspilot.test`       | Northstar admin / Harbor dispatcher |
+| `seed.dispatcher@opspilot.test`  | Northstar dispatcher                |
+| `seed.technician@opspilot.test`  | Northstar technician                |
+| `seed.technician2@opspilot.test` | Northstar technician                |
+| `seed.other-owner@opspilot.test` | Harbor owner                        |
+
+The seed creates two organizations for role and organization-isolation testing,
+along with customers, service requests, jobs, assignments, invoices, payments,
+invitation history, follow-ups, sample notification history, disabled automation
+rules and audit events. No real messages are sent or payment requests made.
+Harbor has no invoices, so its owner can test the currency setting.
+
+The seed only runs against loopback PostgreSQL connections outside production.
+Running it again leaves the existing demo organizations and their data
+unchanged, including any passwords or roles you have edited. It does not reset
+the database. Jobs and other dated fixtures are relative to the initial seed run.
+
 ### Hosted PostgreSQL
 
 You can keep using a hosted database such as Supabase by setting its private

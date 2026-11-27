@@ -1,5 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '../index.js';
+import { invoice } from '../schema/invoice.js';
 import {
   organization,
   organizationMember,
@@ -99,7 +100,54 @@ export async function listOrganizationsForUser(
       organization,
       eq(organizationMember.organizationId, organization.id),
     )
-    .where(eq(organizationMember.userId, userId));
+    .where(
+      and(
+        eq(organizationMember.userId, userId),
+        eq(organizationMember.status, 'ACTIVE'),
+      ),
+    );
 
   return rows;
 }
+
+export async function updateOrganization(
+  organizationId: string,
+  patch: Partial<
+    Pick<
+      Organization,
+      | 'name'
+      | 'slug'
+      | 'logo'
+      | 'phone'
+      | 'email'
+      | 'address'
+      | 'timezone'
+      | 'currency'
+    >
+  >,
+): Promise<Organization | null> {
+  return db.transaction(async (tx) => {
+    const [current] = await tx
+      .select()
+      .from(organization)
+      .where(eq(organization.id, organizationId))
+      .for('update');
+    if (!current) return null;
+    if (patch.currency !== undefined && patch.currency !== current.currency) {
+      const [existingInvoice] = await tx
+        .select({ id: invoice.id })
+        .from(invoice)
+        .where(eq(invoice.organizationId, organizationId))
+        .limit(1);
+      if (existingInvoice) throw new OrganizationCurrencyLockedError();
+    }
+    const [row] = await tx
+      .update(organization)
+      .set(patch)
+      .where(eq(organization.id, organizationId))
+      .returning();
+    return row ?? null;
+  });
+}
+
+export class OrganizationCurrencyLockedError extends Error {}
